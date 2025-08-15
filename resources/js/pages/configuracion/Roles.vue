@@ -76,6 +76,11 @@ const secciones = [
         subdivide: true
     },
     {
+        label: 'Historial de despachos',
+        permisos: ['historial de despachos'],
+        subdivide: false
+    },
+    {
         label: 'Configuración',
         permisos: ['configuracion'],
         subdivide: false

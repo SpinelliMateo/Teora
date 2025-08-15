@@ -496,7 +496,6 @@ const get_subproblemas_by_id = async () => {
                                     </svg>
                                 </button>
                             </td>
-
                         </tr>
                     </tbody>
                 </table>

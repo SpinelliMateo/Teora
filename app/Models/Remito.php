@@ -20,4 +20,14 @@ class Remito extends Model
             ->withPivot('cantidad')
             ->withTimestamps();
     }
+    public function controlStock()
+    {
+        return $this->belongsToMany(
+            ControlStock::class,       
+            'controlstock_remitos',    
+            'remito_id',              
+            'control_stock_id'         
+        );
+    }
+
 }

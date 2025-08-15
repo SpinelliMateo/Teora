@@ -34,6 +34,7 @@ class RolesSeeder extends Seeder
     $reportes = Permission::firstOrCreate(['name' => 'repotes']);
     $verRemitos = Permission::firstOrCreate(['name' => 'ver remitos']);
     $gestionarRemitos = Permission::firstOrCreate(['name' => 'gestionar remitos']);
+    $historialDeDespachos = Permission::firstOrCreate(['name' => 'historial de despachos']);
     $configuracion = Permission::firstOrCreate(['name' => 'configuracion']);
 
     // Asignar permisos a los roles
@@ -51,6 +52,7 @@ class RolesSeeder extends Seeder
         $reportes,
         $verRemitos,
         $gestionarRemitos,
+        $historialDeDespachos,
         $configuracion
     ]);
 

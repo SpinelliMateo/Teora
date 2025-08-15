@@ -16,7 +16,6 @@ withDefaults(defineProps<{
 const user = usePage().props.auth.user
 const rol = usePage().props.auth.user.roles[0].name.charAt(0).toUpperCase() + usePage().props.auth.user.roles[0].name.slice(1) ;
 const permissions = usePage().props.auth.user.roles[0].permissions.map(permission => permission.name);
-console.log(user);
 
 
 const open_cerrar_sesion = ref(false);

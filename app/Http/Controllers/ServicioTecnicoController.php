@@ -77,21 +77,18 @@ class ServicioTecnicoController extends Controller
 
         $problemas = Problema::all();
 
-    return inertia('servicioTecnico/ServicioTecnico', [
-        'servicios' => $servicios,
-        'usuarios' => $usuarios,
-        'filtro' => $filtro ?? 'EN PROCESO',
-        'direcciones' => $direcciones,
-        'problemas' => $problemas,
-        'can' => [
-            'ver' => auth()->user()->can('ver servicio tecnico'),
-            'gestionar' => auth()->user()->can('gestionar servicio tecnico'),
-        ]
-    ]);
-
-
+        return inertia('servicioTecnico/ServicioTecnico', [
+            'servicios' => $servicios,
+            'usuarios' => $usuarios,
+            'filtro' => $filtro ?? 'EN PROCESO',
+            'direcciones' => $direcciones,
+            'problemas' => $problemas,
+            'can' => [
+                'ver' => auth()->user()->can('ver servicio tecnico'),
+                'gestionar' => auth()->user()->can('gestionar servicio tecnico'),
+            ]
+        ]);
     }
-
     public function stock_by_n_serie(Request $request)
     {
         $request->validate([

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AlertaController;
+use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\OrdenFabricacionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -18,9 +20,13 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+
+    // DASHBOARD
+    Route::middleware(['permission:inicio'])->group(function () {
+        Route::get('dashboard', function () {
+            return Inertia::render('Dashboard');
+        })->name('dashboard');
+    });
 
     // STOCK
     Route::middleware(['permission:stock'])->group(function () {
@@ -36,37 +42,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/ordenes-fabricacion/{ordenId}/modelos/{modeloId}', [OrdenFabricacionController::class, 'actualizarModelo'])->name('ordenes-fabricacion.actualizar-modelo');
         Route::delete('/ordenes-fabricacion/{ordenId}/modelos/{modeloId}', [OrdenFabricacionController::class, 'eliminarModelo'])->name('ordenes-fabricacion.eliminar-modelo');
     });
-
-    // CONFIGURACION, USUARIOS, ROLES, STOCK MINIMO, PROBLEMAS
-    Route::middleware(['permission:configuracion'])->group(function () {
-        Route::get('configuracion', function () {
-            return Inertia::render('configuracion/Configuracion');
-        })->name('configuracion');
-
-        //Usuarios
-        Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios');
-        Route::post('usuarios/create', [UsuarioController::class, 'store'])->name('usuarios.store');
-        Route::put('usuarios/update/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
-        Route::delete('usuarios/delete/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
-
-        // Roles
-        Route::get('roles', [RolController::class, 'index'])->name('roles');
-        Route::post('roles/create', [RolController::class, 'store'])->name('roles.store');
-        Route::put('roles/{id}', [RolController::class, 'update'])->name('roles.update');
-        Route::delete('roles/{id}', [RolController::class, 'destroy'])->name('roles.destroy');
-        
-        // Stock minimo
-        Route::get('stock-minimo', [StockMinimoController::class, 'index'])->name('stock_minimo');
-        Route::put('update_stock_minimo', [StockMinimoController::class, 'update_stock_minimo'])->name('update_stock_minimo');
-
-        // Problemas
-        Route::get('problemas', [ProblemasController::class, 'index'])->name('problemas');
-        Route::get('get_subproblemas_by_id', [ProblemasController::class, 'get_subproblemas_by_id'])->name('get_subproblemas_by_id');
-        Route::post('create_problema', [ProblemasController::class, 'create_problema'])->name('create_problema');
-        Route::put('update_problema', [ProblemasController::class, 'update_problema'])->name('update_problema');
-        Route::delete('delete_problema', [ProblemasController::class, 'delete_problema'])->name('delete_problema');
-    });
-
+    
     // SERVICIO TECNICO
     Route::middleware(['permission:ver servicio tecnico|gestionar servicio tecnico'])->group(function () {
         Route::get('servicio-tecnico', [ServicioTecnicoController::class, 'index'])->name('servicio_tecnico');
@@ -90,6 +66,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     });
 
+    // ALERTAS
+    Route::middleware(['permission:alertas'])->group(function () {
+        Route::get('alertas', [AlertaController::class, 'index'])->name('alertas');
+        Route::get('get_modelo_by_serie', [AlertaController::class, 'get_modelo_by_serie'])->name('get_modelo_by_serie');
+        Route::post('alertas/create', [AlertaController::class, 'store'])->name('alertas.store');
+        Route::put('alertas/update/{id}', [AlertaController::class, 'update'])->name('alertas.update');
+        Route::delete('alertas/delete/{id}', [AlertaController::class, 'destroy'])->name('alertas.destroy');
+        Route::put('alertas/toggleSolucionado', [AlertaController::class, 'toggleSolucionado'])->name('alertas.toggleSolucionado');
+    });
+
     //REPORTES
     Route::middleware(['permission:reportes'])->group(function () {
         Route::get('reportes', [ReporteController::class, 'index'])->name('reportes');
@@ -106,6 +92,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     });
 
+    // HISTORIAL DE DESPACHOS
+    Route::middleware(['permission:historial de despachos'])->group(function () {
+        Route::get('historial-despachos', [HistorialController::class, 'index'])->name('historial');
+    });
+
+    // CONFIGURACION
+    Route::middleware(['permission:configuracion'])->group(function () {
+        Route::get('configuracion', function () {
+            return Inertia::render('configuracion/Configuracion');
+        })->name('configuracion');
+
+        //Usuarios
+        Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios');
+        Route::post('usuarios/create', [UsuarioController::class, 'store'])->name('usuarios.store');
+        Route::put('usuarios/update/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
+        Route::delete('usuarios/delete/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+
+        // Roles
+        Route::get('roles', [RolController::class, 'index'])->name('roles');
+        Route::post('roles/create', [RolController::class, 'store'])->name('roles.store');
+        Route::put('roles/{id}', [RolController::class, 'update'])->name('roles.update');
+        Route::delete('roles/{id}', [RolController::class, 'destroy'])->name('roles.destroy');
+        
+        // Stock minimo
+        Route::get('stock-minimo', [StockMinimoController::class, 'index'])->name('stock_minimo');
+        Route::put('update_stock_minimo', [StockMinimoController::class, 'update_stock_minimo'])->name('update_stock_minimo');
+
+        // Problemas
+        Route::get('problemas', [ProblemasController::class, 'index'])->name('problemas');
+        Route::post('create_problema', [ProblemasController::class, 'create_problema'])->name('create_problema');
+        Route::put('update_problema', [ProblemasController::class, 'update_problema'])->name('update_problema');
+        Route::delete('delete_problema', [ProblemasController::class, 'delete_problema'])->name('delete_problema');
+    });
+    
+    Route::get('get_subproblemas_by_id', [ProblemasController::class, 'get_subproblemas_by_id'])->name('get_subproblemas_by_id');
 });
 
 require __DIR__.'/settings.php';
