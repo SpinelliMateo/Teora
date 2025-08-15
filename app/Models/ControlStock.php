@@ -20,6 +20,17 @@ class ControlStock extends Model
         'equipo',
     ];
 
+    protected $casts = [
+        'fecha_prearmado' => 'datetime',
+        'fecha_inyectado' => 'datetime',
+        'fecha_armado' => 'datetime',
+    ];
+
+    public function ordenFabricacion()
+    {
+        return $this->belongsTo(OrdenFabricacion::class);
+    }
+
     public function modelo(){
         return $this->belongsTo(Modelo::class);
     }
@@ -37,4 +48,27 @@ class ControlStock extends Model
             'remito_id'
         );
     }
+
+    public function scopeEnPrearmado($query)
+    {
+        return $query->whereNull('fecha_prearmado');
+    }
+    
+    public function scopeEnInyectado($query)
+    {
+        return $query->whereNotNull('fecha_prearmado')
+        ->whereNull('fecha_inyectado');
+    }
+    
+    public function scopeEnArmado($query)
+    {
+        return $query->whereNotNull('fecha_inyectado')
+        ->whereNull('fecha_armado');
+    }
+    
+    public function scopeCompletado($query)
+    {
+        return $query->whereNotNull('fecha_armado');
+    }
+
 }

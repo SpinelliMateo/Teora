@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Operarios\DespachoController;
+use App\Http\Controllers\Operarios\PrearmadoController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('operarios')->name('operarios.')->group(function () {
@@ -8,4 +9,9 @@ Route::prefix('operarios')->name('operarios.')->group(function () {
     Route::post('/despacho/buscar-control-stock', [DespachoController::class, 'buscarControlStock'])->name('despacho.buscar-control-stock');
     Route::post('/despacho/modelos-remitos', [DespachoController::class, 'obtenerModelosRemitos'])->name('despacho.modelos-remitos');
     Route::post('/despacho/procesar', [DespachoController::class, 'procesarDespacho'])->name('despacho.procesar');
+
+    Route::get('/prearmado', [PrearmadoController::class, 'index'])->name('prearmado.index');
+    
+
+
 });

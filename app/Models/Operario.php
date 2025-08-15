@@ -40,4 +40,5 @@ class Operario extends Model
     public function procesos(){
         return $this->hasMany(ProcesosOperarios::class);
     }
+
 }

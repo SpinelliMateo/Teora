@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Contracts\ControlStockRepositoryInterface;
+use App\Contracts\OperarioRepositoryInterface;
 use App\Contracts\RemitoRepositoryInterface;
 use App\Repositories\ControlStockRepository;
+use App\Repositories\OperarioRepository;
 use App\Repositories\RemitoRepository;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +22,11 @@ class RepositoryServiceProvider extends ServiceProvider{
         $this->app->bind(
             ControlStockRepositoryInterface::class,
             ControlStockRepository::class
+        );
+
+        $this->app->bind(
+            OperarioRepositoryInterface::class,
+            OperarioRepository::class
         );
 
         
