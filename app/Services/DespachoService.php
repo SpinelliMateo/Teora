@@ -2,23 +2,23 @@
 
 namespace App\Services;
 
-use App\Contracts\RemitoRepositoryInterface;
 use App\Contracts\ControlStockRepositoryInterface;
-use App\Models\ControlStock;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Collection as SupportCollection;
+use App\Contracts\RemitoRepositoryInterface;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class DespachoService
 {
-    private RemitoRepositoryInterface $remitoRepository;
     private ControlStockRepositoryInterface $controlStockRepository;
+    private RemitoRepositoryInterface $remitoRepository;
 
     public function __construct(
-        RemitoRepositoryInterface $remitoRepository,
-        ControlStockRepositoryInterface $controlStockRepository
+        ControlStockRepositoryInterface $controlStockRepository,
+        RemitoRepositoryInterface $remitoRepository
     ) {
-        $this->remitoRepository = $remitoRepository;
         $this->controlStockRepository = $controlStockRepository;
+        $this->remitoRepository = $remitoRepository;
     }
 
     public function obtenerRemitosParaDespacho(): Collection
@@ -33,77 +33,114 @@ class DespachoService
         if (!$controlStock) {
             return [
                 'success' => false,
-                'message' => 'No se encontró un registro con ese número de serie',
-                'data' => null
+                'message' => 'Número de serie no encontrado'
             ];
         }
 
         if (!$this->controlStockRepository->isValidForDespacho($controlStock)) {
-            $message = $this->obtenerMensajeError($controlStock);
             return [
                 'success' => false,
-                'message' => $message,
-                'data' => null
+                'message' => 'Este producto no está disponible para despacho'
             ];
         }
 
         return [
             'success' => true,
-            'message' => 'Registro agregado correctamente',
+            'message' => 'Producto encontrado y agregado correctamente',
             'data' => [
                 'id' => $controlStock->id,
                 'n_serie' => $controlStock->n_serie,
                 'fecha_embalado' => $controlStock->fecha_embalado,
                 'modelo_id' => $controlStock->modelo_id,
-                'modelo_nombre' => $controlStock->modelo->nombre_modelo
+                'modelo_nombre' => $controlStock->modelo->nombre_modelo ?? 'N/A'
             ]
         ];
     }
 
-    public function obtenerModelosAgrupados(array $remitoIds): SupportCollection
+    public function obtenerModelosAgrupados(array $remitoIds): array
     {
-        if (empty($remitoIds)) {
-            return collect();
+        $modelos = $this->remitoRepository->getModelosPorRemito($remitoIds);
+        
+        $modelosAgrupados = $modelos->groupBy('id')->map(function ($modelosGrupo) {
+            $modelo = $modelosGrupo->first();
+            $cantidadTotal = $modelosGrupo->sum('pivot.cantidad');
+            
+            return [
+                'modelo_id' => $modelo->id,
+                'nombre_modelo' => $modelo->nombre_modelo,
+                'cantidad_total' => $cantidadTotal,
+                'cantidad_cargada' => 0,
+                'cantidad_restante' => $cantidadTotal
+            ];
+        });
+
+        return array_values($modelosAgrupados->toArray());
+    }
+
+    public function procesarDespacho(array $remitoIds, array $controlStockIds): array
+    {
+        try {
+            DB::beginTransaction();
+
+            $validacion = $this->validarCantidadesCompletas($remitoIds, $controlStockIds);
+            if (!$validacion['valido']) {
+                return [
+                    'success' => false,
+                    'message' => $validacion['mensaje']
+                ];
+            }
+
+            $this->actualizarFechaSalidaControlStock($controlStockIds);
+
+            $this->finalizarRemitos($remitoIds);
+
+            DB::commit();
+
+            return [
+                'success' => true,
+                'message' => 'Despacho procesado correctamente'
+            ];
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return [
+                'success' => false,
+                'message' => 'Error al procesar el despacho: ' . $e->getMessage()
+            ];
         }
+    }
 
-        $remitos = $this->remitoRepository->getByEstado('despachado')
-            ->whereIn('id', $remitoIds);
+    private function validarCantidadesCompletas(array $remitoIds, array $controlStockIds): array
+    {
+        $modelosRequeridos = $this->obtenerModelosAgrupados($remitoIds);
+        
+        $controlStockItems = $this->controlStockRepository->getByIds($controlStockIds);
+        $modelosCargados = $controlStockItems->groupBy('modelo_id')->map(function ($items) {
+            return $items->count();
+        });
 
-        $modelosAgrupados = [];
-
-        foreach ($remitos as $remito) {
-            foreach ($remito->modelos as $modelo) {
-                $modeloId = $modelo->id;
-                $cantidad = $modelo->pivot->cantidad;
-
-                if (isset($modelosAgrupados[$modeloId])) {
-                    $modelosAgrupados[$modeloId]['cantidad_total'] += $cantidad;
-                    $modelosAgrupados[$modeloId]['cantidad_restante'] += $cantidad;
-                } else {
-                    $modelosAgrupados[$modeloId] = [
-                        'modelo_id' => $modeloId,
-                        'nombre_modelo' => $modelo->nombre_modelo,
-                        'cantidad_total' => $cantidad,
-                        'cantidad_cargada' => 0,
-                        'cantidad_restante' => $cantidad
-                    ];
-                }
+        foreach ($modelosRequeridos as $modeloRequerido) {
+            $cantidadCargada = $modelosCargados->get($modeloRequerido['modelo_id'], 0);
+            
+            if ($cantidadCargada !== $modeloRequerido['cantidad_total']) {
+                return [
+                    'valido' => false,
+                    'mensaje' => "El modelo {$modeloRequerido['nombre_modelo']} no tiene la cantidad correcta. Requerido: {$modeloRequerido['cantidad_total']}, Cargado: {$cantidadCargada}"
+                ];
             }
         }
 
-        return collect(array_values($modelosAgrupados));
+        return ['valido' => true, 'mensaje' => ''];
     }
 
-    private function obtenerMensajeError(ControlStock $controlStock): string
+    private function actualizarFechaSalidaControlStock(array $controlStockIds): void
     {
-        if (is_null($controlStock->fecha_embalado)) {
-            return 'Este producto aún no ha sido embalado y no puede despacharse';
-        }
+        $this->controlStockRepository->updateFechaSalida($controlStockIds, Carbon::now());
+    }
 
-        if (!is_null($controlStock->fecha_salida)) {
-            return 'Este producto ya ha sido despachado anteriormente';
-        }
-
-        return 'Este producto no cumple los criterios para ser despachado';
+    private function finalizarRemitos(array $remitoIds): void
+    {
+        $this->remitoRepository->updateEstado($remitoIds, 'finalizado');
     }
 }

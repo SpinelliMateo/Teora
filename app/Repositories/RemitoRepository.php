@@ -25,4 +25,11 @@ class RemitoRepository implements RemitoRepositoryInterface
 
         return $remitos->flatMap(fn(Remito $remito) => $remito->modelos);
     }
+
+    public function updateEstado(array $remitoIds, string $estado): int
+    {
+        return Remito::whereIn('id', $remitoIds)->update([
+            'estado' => $estado
+        ]);
+    }
 }

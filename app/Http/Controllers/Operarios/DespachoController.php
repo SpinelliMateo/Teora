@@ -26,6 +26,7 @@ class DespachoController extends Controller
             'urls' => [
               'modelosRemitos'       => route('sectores.operarios.despacho.modelos-remitos'),
               'buscarControlStock'   => route('sectores.operarios.despacho.buscar-control-stock'),
+              'procesarDespacho'     => route('sectores.operarios.despacho.procesar'),
             ],
             'remitos' => $remitosADespachar
         ]);
@@ -55,5 +56,22 @@ class DespachoController extends Controller
             'success' => true,
             'data' => $modelos
         ]);
+    }
+
+    public function procesarDespacho(Request $request): JsonResponse
+    {
+        $request->validate([
+            'remito_ids' => 'required|array',
+            'remito_ids.*' => 'integer|exists:remitos,id',
+            'control_stock_ids' => 'required|array',
+            'control_stock_ids.*' => 'integer|exists:control_stock,id'
+        ]);
+
+        $resultado = $this->despachoService->procesarDespacho(
+            $request->remito_ids,
+            $request->control_stock_ids
+        );
+
+        return response()->json($resultado);
     }
 }

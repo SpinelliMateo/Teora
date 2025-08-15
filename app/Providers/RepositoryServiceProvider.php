@@ -22,6 +22,7 @@ class RepositoryServiceProvider extends ServiceProvider{
             ControlStockRepository::class
         );
 
+        
     }
 
     public function boot(){

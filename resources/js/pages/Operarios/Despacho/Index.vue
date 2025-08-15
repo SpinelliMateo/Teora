@@ -42,6 +42,7 @@ interface Props {
     urls: {
       modelosRemitos: string;
       buscarControlStock: string;
+      procesarDespacho: string;
     };
 }
 
@@ -53,6 +54,7 @@ const modelosResumen = ref<ModeloResumen[]>([]);
 const numeroSerie = ref('');
 const isLoadingModelos = ref(false);
 const isLoadingBusqueda = ref(false);
+const isLoadingDespacho = ref(false);
 const mensaje = ref('');
 const tipoMensaje = ref<'success' | 'error' | ''>('');
 
@@ -72,6 +74,14 @@ const hasControlStockItems = computed((): boolean => {
     return controlStockItems.value.length > 0;
 });
 
+const puedeDespachar = computed((): boolean => {
+    if (!hasRemitosSeleccionados.value || !hasControlStockItems.value || modelosResumen.value.length === 0) {
+        return false;
+    }
+    
+    // Verificar que todas las cantidades estén completas (cantidad_restante === 0)
+    return modelosResumen.value.every(modelo => modelo.cantidad_restante === 0);
+});
 
 watch(remitosSeleccionados, async (newIds) => {
     if (newIds.length > 0) {
@@ -80,7 +90,6 @@ watch(remitosSeleccionados, async (newIds) => {
         modelosResumen.value = [];
     }
 }, { deep: true });
-
 
 const toggleRemitoSeleccion = (remitoId: number) => {
     const index = remitosSeleccionados.value.indexOf(remitoId);
@@ -105,7 +114,6 @@ const cargarModelosRemitos = async () => {
 
         if (response.data.success) {
             modelosResumen.value = response.data.data;
-
             recalcularCantidades();
         }
     } catch (error) {
@@ -181,12 +189,10 @@ const actualizarCantidadModelo = (modeloId: number, incremento: number) => {
 };
 
 const recalcularCantidades = () => {
-
     modelosResumen.value.forEach(modelo => {
         modelo.cantidad_cargada = 0;
         modelo.cantidad_restante = modelo.cantidad_total;
     });
-
 
     controlStockItems.value.forEach(item => {
         actualizarCantidadModelo(item.modelo_id, 1);
@@ -200,6 +206,37 @@ const mostrarMensaje = (texto: string, tipo: 'success' | 'error') => {
         mensaje.value = '';
         tipoMensaje.value = '';
     }, 5000);
+};
+
+const procesarDespacho = async () => {
+    if (!puedeDespachar.value) {
+        mostrarMensaje('Debe completar todas las cantidades requeridas antes de enviar', 'error');
+        return;
+    }
+
+    try {
+        isLoadingDespacho.value = true;
+        const response = await axios.post(props.urls.procesarDespacho, {
+            remito_ids: remitosSeleccionados.value,
+            control_stock_ids: controlStockItems.value.map(item => item.id)
+        });
+
+        if (response.data.success) {
+            mostrarMensaje(response.data.message, 'success');
+            // Limpiar el formulario después del éxito
+            remitosSeleccionados.value = [];
+            controlStockItems.value = [];
+            modelosResumen.value = [];
+            numeroSerie.value = '';
+        } else {
+            mostrarMensaje(response.data.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error al procesar despacho:', error);
+        mostrarMensaje('Error al procesar el despacho', 'error');
+    } finally {
+        isLoadingDespacho.value = false;
+    }
 };
 
 const formatearFecha = (fecha: string): string => {
@@ -223,7 +260,6 @@ const handleEnterNumeroSerie = (event: KeyboardEvent) => {
                 <h1 class="text-[32px] font-bold text-gray-800">Despacho</h1>
             </div>
 
-
             <Transition name="message" appear>
                 <div v-if="mensaje" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg" 
                      :class="tipoMensaje === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'">
@@ -231,7 +267,6 @@ const handleEnterNumeroSerie = (event: KeyboardEvent) => {
                 </div>
             </Transition>
 
- 
             <div class="max-w-md">
                 <div class="flex gap-4 items-end">
                     <div class="flex-1">
@@ -274,7 +309,6 @@ const handleEnterNumeroSerie = (event: KeyboardEvent) => {
                     </button>
                 </div>
             </div>
-
 
             <div class="flex gap-6 flex-1">
 
@@ -397,9 +431,20 @@ const handleEnterNumeroSerie = (event: KeyboardEvent) => {
 
                     <Transition name="fade-up" appear>
                         <div v-if="hasControlStockItems && hasRemitosSeleccionados" class="mt-4 flex justify-end">
-                            <button class="text-white px-8 py-3 rounded-full hover:opacity-90 font-medium text-lg min-w-[120px] transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl"
-                                    style="background-color: rgb(13, 80, 156);">
-                                Enviar
+                            <button 
+                                @click="procesarDespacho"
+                                :disabled="!puedeDespachar || isLoadingDespacho"
+                                class="text-white px-8 py-3 rounded-full font-medium text-lg min-w-[120px] transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                :class="puedeDespachar ? 'hover:opacity-90' : 'opacity-50'"
+                                style="background-color: rgb(13, 80, 156);">
+                                <span v-if="!isLoadingDespacho">Enviar</span>
+                                <span v-else class="flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                    </svg>
+                                    Procesando...
+                                </span>
                             </button>
                         </div>
                     </Transition>
@@ -573,4 +618,5 @@ button:active:not(:disabled) {
         grid-template-columns: 1fr;
     }
 }
+
 </style>
