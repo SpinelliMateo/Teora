@@ -1,17 +1,22 @@
 <?php
 
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\Operarios\DespachoController;
 use App\Http\Controllers\Operarios\PrearmadoController;
 use Illuminate\Support\Facades\Route;
 
+
 Route::prefix('operarios')->name('operarios.')->group(function () {
+
     Route::get('/despacho', [DespachoController::class, 'index'])->name('despacho.index');
     Route::post('/despacho/buscar-control-stock', [DespachoController::class, 'buscarControlStock'])->name('despacho.buscar-control-stock');
     Route::post('/despacho/modelos-remitos', [DespachoController::class, 'obtenerModelosRemitos'])->name('despacho.modelos-remitos');
     Route::post('/despacho/procesar', [DespachoController::class, 'procesarDespacho'])->name('despacho.procesar');
 
-    Route::get('/prearmado', [PrearmadoController::class, 'index'])->name('prearmado.index');
-    
-
+    Route::get('/prearmado', [PrearmadoController::class, 'index'])->name('sector.prearmado');
+    Route::get('/prearmado/{operario}/modelos', [PrearmadoController::class, 'obtenerModelosPendientes']);
+    Route::post('/prearmado', [PrearmadoController::class, 'store']);
+    Route::get('/prearmado/{id}/detalle', [PrearmadoController::class, 'detalle'])->name('prearmado.detalle');
+    Route::get('/prearmado/{id}/etiqueta', [PrearmadoController::class, 'etiqueta'])->name('sector.prearmado.etiqueta');
 
 });

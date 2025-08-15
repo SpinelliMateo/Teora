@@ -18,4 +18,9 @@ class PrearmadoService
     {
         return $this->operarioRepository->getPrearmadoresConOrdenes();
     }
+
+    public function obtenerModelosPendientes(int $operarioId): Collection
+    {
+        return $this->operarioRepository->getModelosPendientesPorOperario($operarioId);
+    }
 }
