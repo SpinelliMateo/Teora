@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ->name('sectores.operarios.sector.prearmado.etiqueta');
     Route::get('/barcode/etiqueta-largo/{controlStockId}', [BarcodeController::class, 'etiquetaLargo'])
     ->name('sectores.operarios.barcode.etiqueta.largo');
+    
 
 
     // DASHBOARD

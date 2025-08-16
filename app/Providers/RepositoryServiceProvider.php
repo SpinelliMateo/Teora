@@ -8,6 +8,7 @@ use App\Contracts\RemitoRepositoryInterface;
 use App\Repositories\ControlStockRepository;
 use App\Repositories\OperarioRepository;
 use App\Repositories\RemitoRepository;
+use App\Services\InyectadoService;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider{
@@ -29,7 +30,6 @@ class RepositoryServiceProvider extends ServiceProvider{
             OperarioRepository::class
         );
 
-        
     }
 
     public function boot(){

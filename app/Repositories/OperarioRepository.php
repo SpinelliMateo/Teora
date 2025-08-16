@@ -59,4 +59,23 @@ class OperarioRepository implements OperarioRepositoryInterface
             ];
         });
     }
+
+    // Nuevo método para operarios armadores
+    public function getOperariosArmadores(): Collection
+    {
+        return Operario::activos()
+            ->where('rol', 'armador') // O el criterio que uses para identificar armadores
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    public function getOperariosEmbaladores(): Collection
+    {
+        return Operario::activos()
+            ->where('rol', 'embalador') // O el criterio que uses para identificar embaladores
+            ->orderBy('nombre')
+            ->get();
+    }
+
+    
 }

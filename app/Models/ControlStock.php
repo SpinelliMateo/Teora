@@ -36,9 +36,9 @@ class ControlStock extends Model
     }
 
     public function ordenFabricacion()
-    {
-        return $this->belongsTo(OrdenFabricacion::class);
-    }
+{
+    return $this->belongsTo(OrdenFabricacion::class);
+}
 
     public function prearmadores()
     {
