@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\PermissionRouteMap;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -30,10 +31,19 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+
+        foreach (PermissionRouteMap::map() as $permission => $routeName) {
+            if ($user->can($permission)) {
+                return redirect()->route($routeName);
+            }
+        }
+
+        // Si no tiene permisos, lo podés mandar a una vista 403 personalizada o logout
+        Auth::logout();
+        return redirect()->route('login')->withErrors(['email' => 'No tenés acceso a ninguna sección del sistema.']);
     }
 
     /**

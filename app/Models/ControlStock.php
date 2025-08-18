@@ -28,4 +28,13 @@ class ControlStock extends Model
         return $this->hasMany(ProcesosOperarios::class);
     }
 
+    public function remitos()
+    {
+        return $this->belongsToMany(
+            Remito::class,
+            'controlstock_remitos',
+            'control_stock_id',
+            'remito_id'
+        );
+    }
 }

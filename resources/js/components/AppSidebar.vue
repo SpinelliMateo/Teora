@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { Link } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
+
+const permissions = usePage().props.auth.user.roles[0].permissions.map(permission => permission.name);
 
 </script>
 
@@ -10,9 +13,9 @@ import { Link } from '@inertiajs/vue3';
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="route('dashboard')" class="flex items-center justify-center p-4">
-                        <img :src="'/logo-teora.png'" alt="Teora" class="w-[172px] h-[60px]" />
-                        </Link>
+                        <div class="flex items-center justify-center p-4">
+                            <img :src="'/logo-teora.png'" alt="Teora" class="w-[172px] h-[60px]" />
+                        </div>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
@@ -22,7 +25,8 @@ import { Link } from '@inertiajs/vue3';
             <div class="py-2">
                 <nav class="space-y-1">
                     <div class="w-full">
-                        <Link href="" class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
+                        <Link v-if="permissions.includes('inicio')" :href="route('dashboard')"
+                            class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
                             <svg class="w-5 h-5 mr-3 flex-shrink-0" width="14" height="16" viewBox="0 0 14 16"
@@ -33,7 +37,8 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Inicio</span>
                         </div>
                         </Link>
-                        <Link :href="route('ordenes-fabricacion.index')"
+                        <Link v-if="permissions.includes('ver ordenes') || permissions.includes('gestionar ordenes')"
+                            :href="route('ordenes-fabricacion.index')"
                             class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
@@ -52,7 +57,7 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Órdenes de fabricación</span>
                         </div>
                         </Link>
-                        <Link :href="route('stock')"
+                        <Link v-if="permissions.includes('stock')" :href="route('stock')"
                             class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
@@ -66,7 +71,9 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Stock</span>
                         </div>
                         </Link>
-                        <Link :href="route('servicio_tecnico')"
+                        <Link
+                            v-if="permissions.includes('ver servicio tecnico') || permissions.includes('gestionar servicio tecnico')"
+                            :href="route('servicio_tecnico')"
                             class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
@@ -79,7 +86,8 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Servicio técnico</span>
                         </div>
                         </Link>
-                        <Link :href="route('procesos')"
+                        <Link v-if="permissions.includes('ver servicio proceso') || permissions.includes('gestionar servicio proceso')"
+                            :href="route('procesos')"
                             class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
@@ -94,7 +102,8 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Seguimiento por proceso</span>
                         </div>
                         </Link>
-                        <Link href="" class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
+                        <Link v-if="permissions.includes('alertas')" :href="route('alertas')"
+                            class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
                             <svg class="w-5 h-5 mr-3 flex-shrink-0" width="20" height="18" viewBox="0 0 20 18"
@@ -107,7 +116,8 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Registro de alertas</span>
                         </div>
                         </Link>
-                        <Link :href="route('reportes')" class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
+                        <Link v-if="permissions.includes('reportes')" :href="route('reportes')"
+                            class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
                             <svg class="w-5 h-5 mr-3 flex-shrink-0" width="17" height="17" viewBox="0 0 17 17"
@@ -120,7 +130,8 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Reportes</span>
                         </div>
                         </Link>
-                        <Link :href="route('remitos')"
+                        <Link v-if="permissions.includes('ver remitos') || permissions.includes('gestionar remitos')"
+                            :href="route('remitos')"
                             class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <div class="flex px-3">
@@ -140,6 +151,19 @@ import { Link } from '@inertiajs/vue3';
                             <span class="font-medium text-black text-[16px]">Remitos</span>
                         </div>
                         </Link>
+                        <Link v-if="permissions.includes('historial de despachos')" :href="route('historial')"
+                            class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
+                            style="border-color: #F3F3F3;">
+                        <div class="flex px-3">
+                            <svg class="w-5 h-5 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="19"
+                                height="14" viewBox="0 0 19 14" fill="none">
+                                <path
+                                    d="M14.6818 12.6875C14.3382 12.6875 14.0087 12.5492 13.7658 12.3031C13.5229 12.0569 13.3864 11.7231 13.3864 11.375C13.3864 11.0269 13.5229 10.6931 13.7658 10.4469C14.0087 10.2008 14.3382 10.0625 14.6818 10.0625C15.0254 10.0625 15.3549 10.2008 15.5978 10.4469C15.8408 10.6931 15.9773 11.0269 15.9773 11.375C15.9773 11.7231 15.8408 12.0569 15.5978 12.3031C15.3549 12.5492 15.0254 12.6875 14.6818 12.6875ZM15.9773 4.8125L17.67 7H13.8182V4.8125M4.31818 12.6875C3.97461 12.6875 3.6451 12.5492 3.40216 12.3031C3.15921 12.0569 3.02273 11.7231 3.02273 11.375C3.02273 11.0269 3.15921 10.6931 3.40216 10.4469C3.6451 10.2008 3.97461 10.0625 4.31818 10.0625C4.66176 10.0625 4.99126 10.2008 5.23421 10.4469C5.47715 10.6931 5.61364 11.0269 5.61364 11.375C5.61364 11.7231 5.47715 12.0569 5.23421 12.3031C4.99126 12.5492 4.66176 12.6875 4.31818 12.6875ZM16.4091 3.5H13.8182V0H1.72727C0.768636 0 0 0.77875 0 1.75V11.375H1.72727C1.72727 12.0712 2.00024 12.7389 2.48613 13.2312C2.97202 13.7234 3.63103 14 4.31818 14C5.00533 14 5.66434 13.7234 6.15023 13.2312C6.63612 12.7389 6.90909 12.0712 6.90909 11.375H12.0909C12.0909 12.0712 12.3639 12.7389 12.8498 13.2312C13.3357 13.7234 13.9947 14 14.6818 14C15.369 14 16.028 13.7234 16.5139 13.2312C16.9998 12.7389 17.2727 12.0712 17.2727 11.375H19V7L16.4091 3.5Z"
+                                    fill="#0D509C" />
+                            </svg>
+                            <span class="font-medium text-black text-[16px]">Historial de despachos</span>
+                        </div>
+                        </Link>
                     </div>
                 </nav>
             </div>
@@ -148,7 +172,7 @@ import { Link } from '@inertiajs/vue3';
                 <h3 class="px-2 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">MAESTROS</h3>
                 <nav class="space-y-1">
                     <div class="w-full">
-                        <Link :href="route('configuracion')"
+                        <Link v-if="permissions.includes('configuracion')" :href="route('configuracion')"
                             class="flex items-center w-full p-2 hover:bg-blue-50 duration-300 border-b"
                             style="border-color: #F3F3F3;">
                         <svg class="w-5 h-5 mr-3 flex-shrink-0" width="19" height="19" viewBox="0 0 19 19" fill="none"
