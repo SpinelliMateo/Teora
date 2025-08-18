@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1
+
+ARG PHP_VERSION=8.3
+FROM php:${PHP_VERSION}-fpm-alpine AS base
+
+# Dependencias del sistema y extensiones de PHP
+RUN apk add --no-cache \
+    bash git unzip icu-dev oniguruma-dev libzip-dev libpng-dev libjpeg-turbo-dev libwebp-dev libxml2-dev \
+    freetype-dev autoconf g++ make linux-headers shadow curl \
+ && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+ && docker-php-ext-install -j$(nproc) \
+    pdo_mysql intl bcmath gd exif pcntl opcache zip \
+ && apk del autoconf g++ make
+
+# Opcional: Xdebug para dev (descomentar si lo querés)
+# RUN pecl install xdebug && docker-php-ext-enable xdebug
+# COPY ./docker/php/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+
+# Config de PHP recomendada
+COPY ./docker/php/php.ini /usr/local/etc/php/php.ini
+
+# Crear usuario no root (www-data) con uid/gid estándar
+RUN usermod -u 1000 www-data && groupmod -g 1000 www-data
+
+WORKDIR /var/www/html
+
+# Composer (multi-stage) para no dejarlo instalado globalmente con peso
+FROM composer:2 AS composer_stage
+FROM base AS deps
+
+COPY --chown=www-data:www-data composer.json composer.lock* ./
+COPY --from=composer_stage /usr/bin/composer /usr/bin/composer
+
+# Instalá dependencias de PHP (si no existe vendor, lo crea)
+RUN --mount=type=cache,target=/tmp/composer \
+    composer install --no-interaction --no-progress --prefer-dist
+
+# Copiá el resto del proyecto
+FROM deps AS app
+COPY --chown=www-data:www-data . .
+
+# Si tu proyecto usa Laravel Octane/Swoole/RoadRunner, acá podés instalar binarios
+# RUN composer require laravel/octane
+
+# Permisos y cacheos de Laravel
+RUN mkdir -p storage/framework/{cache,views,sessions} storage/logs bootstrap/cache \
+ && chown -R www-data:www-data storage bootstrap/cache \
+ && php artisan config:clear || true \
+ && php artisan view:clear || true
+
+# Opcional: build de assets en imagen (para prod) usando Node temporal
+# FROM node:20-alpine AS assets
+# WORKDIR /app
+# COPY package*.json ./
+# RUN npm ci
+# COPY . .
+# RUN npm run build
+
+# En prod podrías copiar /public/build desde la etapa de assets
+# COPY --from=assets /app/public/build /var/www/html/public/build
+
+EXPOSE 9000
+USER www-data
+
+CMD ["php-fpm", "-F"]
