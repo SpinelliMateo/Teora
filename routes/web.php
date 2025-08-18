@@ -14,12 +14,27 @@ use App\Http\Controllers\RemitosController;
 use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\BarcodeController;
 
 Route::get('/', function () {
     return Inertia::render('auth/Login');
 })->name('home');
 
+
+
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    //BARCODE
+    Route::get('/barcode/generate/{controlStockId}', [BarcodeController::class, 'generate'])
+    ->name('sectores.operarios.barcode.generate');
+    Route::get('/barcode/generate/modelo/{controlStockId}', [BarcodeController::class, 'generateModelo'])
+    ->name('sectores.operarios.barcode.generate.modelo');
+    Route::get('/barcode/etiqueta/{controlStockId}', [BarcodeController::class, 'etiqueta'])
+    ->name('sectores.operarios.sector.prearmado.etiqueta');
+    Route::get('/barcode/etiqueta-largo/{controlStockId}', [BarcodeController::class, 'etiquetaLargo'])
+    ->name('sectores.operarios.barcode.etiqueta.largo');
+    
+
 
     // DASHBOARD
     Route::middleware(['permission:inicio'])->group(function () {
