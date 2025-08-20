@@ -9,9 +9,11 @@ class AddOrdenFabricacionIdToControlStockTable extends Migration
     public function up()
     {
         Schema::table('control_stock', function (Blueprint $table) {
-            $table->unsignedBigInteger('orden_fabricacion_id')->after('id');
-            $table->foreign('orden_fabricacion_id')->references('id')->on('ordenes_fabricacion');
-            
+            $table->unsignedBigInteger('orden_fabricacion_id')->nullable()->after('id');
+            $table->foreign('orden_fabricacion_id')->references('id')->on('ordenes_fabricacion')->onDelete('cascade');
+   
+
+
             $table->index(['orden_fabricacion_id', 'modelo_id']);
         });
     }

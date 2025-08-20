@@ -7,6 +7,7 @@ use App\Services\ControlStockService;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class BarcodeController extends Controller
 {
@@ -363,7 +364,7 @@ class BarcodeController extends Controller
             $codigoLimpio = 'EMPTY_CODE';
         }
 
-        $generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
+        $generator = new BarcodeGeneratorPNG();
         $barcode = $generator->getBarcode($codigoLimpio, $generator::TYPE_CODE_128, 3, 60);
         
         return response($barcode, 200, [

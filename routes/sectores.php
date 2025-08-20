@@ -20,6 +20,7 @@ Route::prefix('operarios')->name('operarios.')->group(function () {
     Route::post('/prearmado', [PrearmadoController::class, 'store']);
     Route::get('/prearmado/{id}/detalle', [PrearmadoController::class, 'detalle'])->name('prearmado.detalle');
     Route::get('/prearmado/{id}/etiqueta', [PrearmadoController::class, 'etiqueta'])->name('sector.prearmado.etiqueta');
+    Route::post('/imprimir/zebra', [PrearmadoController::class, 'imprimirZebra'])->name('imprimir.zebra');
 
     Route::get('/inyectado', [InyectadoController::class, 'index']);
     Route::post('/inyectado', [InyectadoController::class, 'store']);

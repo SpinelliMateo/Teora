@@ -29,10 +29,26 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
+const isOrderExpired = computed(() => {
+  return (orden) => {
+    if (orden.estado !== 'pendiente') return false;
+
+    const today = new Date();
+    const fechaFinalizacion = new Date(orden.fecha_finalizacion);
+
+    // Comparar solo las fechas sin horas
+    today.setHours(0, 0, 0, 0);
+    fechaFinalizacion.setHours(0, 0, 0, 0);
+
+    return fechaFinalizacion < today;
+  };
+});
+
 const ordenData = reactive({
     fecha: props.ordenFabricacion.fecha,
     no_orden: props.ordenFabricacion.no_orden,
     fecha_finalizacion: props.ordenFabricacion.fecha_finalizacion,
+    estado: props.ordenFabricacion.estado,
     operarios: props.ordenFabricacion.operarios?.map(op => op.id) || []
 });
 
@@ -476,7 +492,10 @@ const eliminarModelo = () => {
                             :min="fechaFinalizacionMinima"
                             :disabled="isUpdating"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                            :class="{ 'border-red-500 ring-red-200': errors.fecha_finalizacion, 'bg-gray-50 cursor-not-allowed': isUpdating }"
+                            :class="[
+                                { 'border-red-500 ring-red-200': errors.fecha_finalizacion, 'bg-gray-50 cursor-not-allowed': isUpdating },
+                                isOrderExpired(ordenData) ? 'bg-[#FAE8E8]' : 'bg-white'
+                            ]"
                         />
                         <span v-if="errors.fecha_finalizacion" class="text-red-500 text-sm animate-pulse">
                             {{ errors.fecha_finalizacion[0] }}
