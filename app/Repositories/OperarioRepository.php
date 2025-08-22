@@ -12,6 +12,7 @@ class OperarioRepository implements OperarioRepositoryInterface
     public function getPrearmadoresConOrdenes(): Collection
     {
         return Operario::activos()
+        ->whereHas('sectores', fn($s) => $s->where('nombre', 'Prearmado'))
         ->whereHas('ordenesFabricacion', function ($q) {
             $q->whereHas('modelos', function ($mq) {
                 $mq->whereDoesntHave('stock', function ($sq) {
@@ -64,7 +65,7 @@ class OperarioRepository implements OperarioRepositoryInterface
     public function getOperariosArmadores(): Collection
     {
         return Operario::activos()
-            ->where('rol', 'armador') // O el criterio que uses para identificar armadores
+             ->whereHas('sectores', fn($q) => $q->where('nombre', 'Armado'))
             ->orderBy('nombre')
             ->get();
     }
@@ -72,7 +73,7 @@ class OperarioRepository implements OperarioRepositoryInterface
     public function getOperariosEmbaladores(): Collection
     {
         return Operario::activos()
-            ->where('rol', 'embalador') // O el criterio que uses para identificar embaladores
+            ->whereHas('sectores', fn($q) => $q->where('nombre', 'Embalado'))
             ->orderBy('nombre')
             ->get();
     }

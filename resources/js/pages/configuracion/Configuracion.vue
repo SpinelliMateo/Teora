@@ -62,7 +62,7 @@ const props = defineProps({
                     </svg>
                     <span class="text-black text-[16px] font-medium">Modelos</span>
                 </div>
-                <div class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
+                <Link :href="route('operarios')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" width="16" height="19" viewBox="0 0 16 19" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
                         <path
@@ -71,7 +71,7 @@ const props = defineProps({
                     </svg>
 
                     <span class="text-black text-[16px] font-medium">Operarios</span>
-                </div>
+                </Link>
                 <Link :href="route('stock_minimo')"
                     class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
                 <svg class="w-5 h-5 mr-3 flex-shrink-0" width="14" height="17" viewBox="0 0 14 17" fill="none"

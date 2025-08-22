@@ -22,7 +22,8 @@ class DatabaseSeeder extends Seeder
         // $this->call(MigrarUsuariosSeeder::class); 
         // $this->call(MigrarModelosSeeder::class);
         // $this->call(MigrarControlStockSeeder::class);
-        $this->call(OperariosSeeder::class);
-        $this->call(ProcesosSeeder::class);
+        //$this->call(OperariosSeeder::class);
+        //$this->call(ProcesosSeeder::class);
+        $this->call(SectorSeeder::class);
     }
 }

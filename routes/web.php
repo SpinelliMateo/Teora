@@ -15,6 +15,7 @@ use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\BarcodeController;
+use App\Http\Controllers\OperarioController;
 
 Route::get('/', function () {
     return Inertia::render('auth/Login');
@@ -139,6 +140,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('create_problema', [ProblemasController::class, 'create_problema'])->name('create_problema');
         Route::put('update_problema', [ProblemasController::class, 'update_problema'])->name('update_problema');
         Route::delete('delete_problema', [ProblemasController::class, 'delete_problema'])->name('delete_problema');
+
+        Route::get('operarios', [OperarioController::class, 'index'])->name('operarios');
+        Route::post('operarios', [OperarioController::class, 'store'])->name('operarios.store');
+        Route::put('operarios/{operario}', [OperarioController::class, 'update'])->name('operarios.update');
+        Route::delete('operarios/{operario}', [OperarioController::class, 'destroy'])->name('operarios.destroy');
+        Route::get('/operarios/etiqueta/{operario}', [OperarioController::class, 'mostrarEtiqueta'])->name('operarios.etiqueta');
+        Route::get('/operarios/barcode/{operario}', [OperarioController::class, 'generarCodigoBarras'])->name('operarios.barcode');
     });
     
     Route::get('get_subproblemas_by_id', [ProblemasController::class, 'get_subproblemas_by_id'])->name('get_subproblemas_by_id');

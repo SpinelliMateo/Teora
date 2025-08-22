@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/vue3'
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
-type Operario = { id: number; nombre: string }
+type Operario = { id: number; nombre: string, apellido: string }
 type Modelo = {
   id: number
   nombre?: string
@@ -24,7 +24,8 @@ const errorMsg = ref<string | null>(null)
 
 const nombreOperario = computed(() => {
   const op = props.prearmadores.find(o => o.id === selectedOperarioId.value)
-  return op?.nombre ?? ''
+  if (!op) return ''
+  return `${op.nombre ?? ''} ${op.apellido ?? ''}`.trim()
 })
 
 const selectedModelo = computed(() =>
@@ -140,7 +141,7 @@ const stepCircleClass = (n: number) =>
             >
               <option :value="null" disabled>Seleccionar operario...</option>
               <option v-for="op in props.prearmadores" :key="op.id" :value="op.id">
-                {{ op.nombre }}
+                {{ op.nombre }} {{ op.apellido }}
               </option>
             </select>
             <!-- caret -->
