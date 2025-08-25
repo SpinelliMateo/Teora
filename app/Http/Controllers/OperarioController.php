@@ -196,18 +196,6 @@ class OperarioController extends Controller
         return $codigoQr;
     }
 
-    public function mostrarEtiqueta(Operario $operario)
-    {
-        try {
-            return Inertia::render('configuracion/EtiquetaOperario', [
-                'operario' => $operario->load('sectores')
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error al mostrar etiqueta: ' . $e->getMessage());
-            return redirect()->back()->withErrors(['error' => 'Error al cargar la etiqueta']);
-        }
-    }
-
     public function generarCodigoBarras(Operario $operario)
     {
         try {
@@ -244,4 +232,84 @@ class OperarioController extends Controller
                 ->header('Content-Type', 'image/svg+xml');
         }
     }
+
+    public function imprimirEtiqueta(Operario $operario)
+    {
+        try {
+
+            // Construir el ZPL con datos reales
+            $zpl = $this->construirTemplateZPL($operario);
+
+            // Enviar directamente a la impresora HPRT
+            $resultado = $this->enviarAImpresoraHPRT($zpl);
+
+            if ($resultado) {
+                return back()->with('message', 'Etiqueta impresa correctamente');
+            } else {
+                return back()->withErrors(['message' => 'Error al enviar a la impresora']);
+            }
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['message' => 'Error al imprimir: ' . $e->getMessage()]);
+        }
+
+        return back()->with('message', "Etiqueta del operario {$operario->n_legajo} impresa.");
+    }
+    private function construirTemplateZPL(Operario $operario)
+    {
+        $nombre = strtoupper($operario->nombre . ' ' . $operario->apellido);
+        $codigoqr = $operario->codigo_qr;
+
+        $zpl = "^XA
+                ^PW807
+                ^LH0,0
+                ~DGR:SSGFX000.GRF,1311,23,:Z64:eJx1kzGLE0EYht/J5EiQJYmg2GyxXP7ApkuRIvcPrrn+YAstd6tL1INRggYJm/sBYRt/hRbHSg6uEW20CwaMuFZylyvCWfl93240E+PyMUzeDDPPvN87gPXt559nqzjKv+6WvIjbXENbVVnS55rYcj1Xk54tV9zoUsqxV3duPnItlSXvreanXLOm2UUSB5b8h8SxL5T0vnM9crcvlH/u8U7Z3vvv0bvl/6wWkimP/vQOTd8Cb7KhHHn30g0BsoLkiCf3RI5EbrHsXBuHPDG0t6LbDmQ0eDCnOl2li+fQbIKMBs2YiibBC0t+mFD1szPHTx1/6vhGRpw/MdIdN0odbkfKTQmVG0Emtqw715DuBHFbDxoHMYJRIxir1Se1+nx0MqNeNIdVE3uLYfV1DEoIT0ZB7LMtNfZMxyqjBhlUJkwSsiFiy8sEOqFFj/kwNuQdtymquFBkQTkU2VRJZp/GHeiOgbOkjYmBSdicvStgBeiZ+ECX9+TI6lfkZ/Nq8SQn+UYkFMWEAMSNZxxGf8wkBrUeAUhE1RbJce6N3iQpL4u9B0yimUQxybwgGWInieFfyiZpZYmnt0joyJCTLUeuSaK1jH88yd/JYtOTL8TQfFXImyQj6FER3cKTMybJc9LKc1Kn1pzf/qj1iigUgSAS8uKiHDpWTuodUE4+lJcUPSV+swUDJjmZP9VzkiWanjjDJE1W1Hq1JJZICKNfmcBPOSQtSsvU9Zikdvuz9AtRCjmSx25FDLlAiFbKryYy8nZ0GyjdvMcVyvR/40BG6uYh3ff+Iboo0f/evoyUQn6lJRp+A1T7T90=:76FC
+                ^XA
+                ^FO40,315
+                ^XGR:SSGFX000.GRF,1,1^FS
+                ~DGR:SSGFX000.GRF,611,13,:Z64:eJytksFKw0AQhqc1jYuE1uMigtuTFw8JXnJqCX2RiC/Q3iyIjlbqRfQNfAIPPsLGgN58BNnSQ4+2F4kYGmcnSOLBm8syyx+Gb//5N0VRLTO/DWl/cTUa7BJcY+RDclV/C10T8S+AZiiJd0uzt+USth6QAKOX3dGzhP22qmghGKLpUviZTwDdw44RMCikFZ+6nwm4K26Ilmg9DGVjr7giwAxj48mN/maTREqtnmyewoRoKRyhJ92TPKGvKRwjCHe8jlgEJJzVU5doKRwiSGeuFSqcQ0AOWrMsQEujNtkyuY+Wxm2mp7CktYWzdBXT6B6ivUZM65IDZ5VH1ttUGWtHJiSSSUyum2eNS/KWXJh+Rq6vp+VwnaXgeUicaxtiOamG2AYyWG9zVD6nI4dVbgfwWL3Czgf1a85agLfASlC6//GmdfE2Xtz/bFPU/6pvM3LBzw==:F4EA
+                ^FO665,325
+                ^XGR:SSGFX000.GRF,1,1^FS
+
+
+                ^FO145,50^BY3^BCN,110,N,N,N^FD{$codigoqr}^FS
+                ^FO20,15^GB765,370,3^FS
+
+                ^CF0,40,40
+                ^FO260,245^FD{$nombre}^FS
+
+                ^CF0,30,30
+                ^FO310,180^FD{$codigoqr}^FS
+
+                ^XZ
+                ";
+
+        return $zpl;
+        }
+
+       private function enviarAImpresoraHPRT($zpl)
+        {
+            try {
+                // Guardar archivo ZPL temporal
+                $tempFile = tempnam(sys_get_temp_dir(), 'hprt_') . '.txt';
+                file_put_contents($tempFile, $zpl);
+
+                Log::info("Archivo ZPL guardado en: $tempFile");
+                // Usar notepad para imprimir a través del driver HPRT
+                $command = 'copy /b ' . $tempFile . ' "\\\localhost\HPRTHT800"';
+                exec($command, $output, $return_var);
+
+                // Borrar el archivo temporal
+                unlink($tempFile);
+
+                Log::info("Comando ejecutado: $command");
+                Log::info("Return var: $return_var");
+                Log::info("Output: " . implode("\n", $output));
+
+                return $return_var === 0;
+            } catch (\Exception $e) {
+                Log::error('Error al imprimir: ' . $e->getMessage());
+                return false;
+            }
+        }
 }

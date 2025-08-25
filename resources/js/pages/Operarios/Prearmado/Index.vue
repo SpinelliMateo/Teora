@@ -2,6 +2,9 @@
 import { Head, router } from '@inertiajs/vue3'
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
+import { useToast } from '@/composables/useToast';
+
+const { success, error } = useToast();
 
 type Operario = { id: number; nombre: string, apellido: string }
 type Modelo = {
@@ -72,15 +75,34 @@ function cancelar() {
 
 function continuar() {
   if (!selectedOperarioId.value || !selectedModeloId.value) return
-  router.post('/sectores/operarios/prearmado', 
+  router.post('/sectores/operarios/prearmado',
     {
       operario_id: selectedOperarioId.value,
       modelos: [selectedModeloId.value],
     },
     {
       onStart: () => { cargando.value = true; errorMsg.value = null },
-      onSuccess: () => { cancelar() },
-      onError: (errors) => { errorMsg.value = (errors as any)?.message || 'No se pudo prearmar el modelo.' },
+      onSuccess: (page: any) => {
+        cancelar()
+        const mensaje = (page.props.flash as any)?.message || '';
+        success(mensaje);
+      },
+      onError(errors) {
+        console.log('Errores de impresion:', errors);
+
+        if (errors.error) {
+          error(errors.error);
+        } else if (errors.message) {
+          error(errors.message);
+        } else {
+          const firstError = Object.values(errors)[0];
+          if (firstError) {
+            error(Array.isArray(firstError) ? firstError[0] : firstError);
+          } else {
+            error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
+          }
+        }
+      },
       onFinish: () => { cargando.value = false }
     }
   )
@@ -97,6 +119,7 @@ const stepCircleClass = (n: number) =>
 </script>
 
 <template>
+
   <Head title="Prearmado" />
   <div class="min-h-screen transition-colors duration-200" :class="pageBgClass">
     <div class="max-w-2xl mx-auto px-4 py-6 md:py-10">
@@ -107,38 +130,34 @@ const stepCircleClass = (n: number) =>
           <h1 class="text-lg font-semibold text-gray-800 mb-4">Prearmado</h1>
           <div class="flex items-center justify-center space-x-4">
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(1)">1</div>
+              :class="stepCircleClass(1)">1</div>
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(2)">2</div>
+              :class="stepCircleClass(2)">2</div>
           </div>
         </div>
-        
+
         <!-- Desktop: layout original con grid -->
         <div class="hidden md:grid grid-cols-3 items-center">
           <h1 class="text-lg font-semibold text-gray-800 justify-self-start">Prearmado</h1>
           <div class="justify-self-center flex items-center space-x-4">
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(1)">1</div>
+              :class="stepCircleClass(1)">1</div>
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(2)">2</div>
+              :class="stepCircleClass(2)">2</div>
           </div>
           <div></div>
         </div>
       </div>
 
       <!-- STEP 1 -->
-      <div v-if="currentStep === 1"
-           class="bg-white rounded-2xl shadow-lg p-4 md:p-6 lg:p-8">
+      <div v-if="currentStep === 1" class="bg-white rounded-2xl shadow-lg p-4 md:p-6 lg:p-8">
         <!-- Operario -->
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-2">Operario</label>
           <div class="relative">
-            <select
-              v-model.number="selectedOperarioId"
-              class="w-full rounded-xl border border-gray-300 pr-10 pl-3 py-2.5
+            <select v-model.number="selectedOperarioId" class="w-full rounded-xl border border-gray-300 pr-10 pl-3 py-2.5
                      focus:border-sky-800 focus:ring-2 focus:ring-sky-200
-                     transition bg-white appearance-none text-sm md:text-base"
-            >
+                     transition bg-white appearance-none text-sm md:text-base">
               <option :value="null" disabled>Seleccionar operario...</option>
               <option v-for="op in props.prearmadores" :key="op.id" :value="op.id">
                 {{ op.nombre }} {{ op.apellido }}
@@ -146,8 +165,9 @@ const stepCircleClass = (n: number) =>
             </select>
             <!-- caret -->
             <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
-                 viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z"/>
+              viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
             </svg>
           </div>
         </div>
@@ -156,14 +176,10 @@ const stepCircleClass = (n: number) =>
         <div class="mb-6 md:mb-8" v-if="selectedOperarioId">
           <label class="block text-sm font-medium text-gray-700 mb-2">Modelo</label>
           <div class="relative">
-            <select
-              v-model.number="selectedModeloId"
-              :disabled="cargando"
-              class="w-full rounded-xl border border-gray-300 pr-10 pl-3 py-2.5
+            <select v-model.number="selectedModeloId" :disabled="cargando" class="w-full rounded-xl border border-gray-300 pr-10 pl-3 py-2.5
                      focus:border-sky-800 focus:ring-2 focus:ring-sky-200
                      transition bg-white disabled:bg-gray-100 disabled:text-gray-500
-                     appearance-none text-sm md:text-base"
-            >
+                     appearance-none text-sm md:text-base">
               <option :value="null" disabled>
                 {{ cargando ? 'Cargando modelos...' : 'Seleccionar modelo...' }}
               </option>
@@ -172,26 +188,23 @@ const stepCircleClass = (n: number) =>
               </option>
             </select>
             <svg class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500"
-                 viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z"/>
+              viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path
+                d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" />
             </svg>
           </div>
         </div>
 
         <!-- Error -->
-        <div v-if="errorMsg"
-             class="mb-5 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+        <div v-if="errorMsg" class="mb-5 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
           {{ errorMsg }}
         </div>
 
         <!-- CTA responsive -->
         <div class="text-center">
-          <button
-            class="w-full max-w-80 h-10 rounded-[20px] bg-sky-800 text-white font-medium
+          <button class="w-full max-w-80 h-10 rounded-[20px] bg-sky-800 text-white font-medium
                    hover:bg-sky-900 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm md:text-base"
-            :disabled="!puedeGrabar()"
-            @click="grabar"
-          >
+            :disabled="!puedeGrabar()" @click="grabar">
             Grabar
           </button>
         </div>
@@ -208,29 +221,22 @@ const stepCircleClass = (n: number) =>
           {{ selectedModelo ? displayNombreModelo(selectedModelo) : '' }}
         </div>
 
-        <div v-if="errorMsg"
-             class="mb-6 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+        <div v-if="errorMsg" class="mb-6 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
           {{ errorMsg }}
         </div>
 
         <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:justify-center md:gap-4">
           <!-- Botón Cancelar: transparente + texto sky -->
-          <button
-            class="w-full md:w-80 h-10 rounded-[20px] bg-transparent text-sky-800 font-medium
-                   border border-sky-800 hover:bg-sky-50 transition text-sm md:text-base"
-            @click="cancelar"
-            :disabled="cargando"
-          >
+          <button class="w-full md:w-80 h-10 rounded-[20px] bg-transparent text-sky-800 font-medium
+                   border border-sky-800 hover:bg-sky-50 transition text-sm md:text-base" @click="cancelar"
+            :disabled="cargando">
             Cancelar
           </button>
 
-          <button
-            class="w-full md:w-80 h-10 rounded-[20px] bg-sky-800 text-white font-medium
-                   hover:bg-sky-900 disabled:opacity-50 transition text-sm md:text-base"
-            @click="continuar"
-            :disabled="cargando"
-          >
-            {{ cargando ? 'Procesando...' : 'Continuar' }}
+          <button class="w-full md:w-80 h-10 rounded-[20px] bg-sky-800 text-white font-medium
+                   hover:bg-sky-900 disabled:opacity-50 transition text-sm md:text-base" @click="continuar"
+            :disabled="cargando">
+            {{ cargando ? 'Imprimiendo...' : 'Imprimir etiqueta' }}
           </button>
         </div>
       </div>
@@ -240,6 +246,9 @@ const stepCircleClass = (n: number) =>
 
 <style scoped>
 /* oculta caret heredado en navegadores legacy */
-select::-ms-expand { display: none; }
+select::-ms-expand {
+  display: none;
+}
+
 /* Mantengo el CSS mínimo: todo el estilo está en Tailwind */
 </style>

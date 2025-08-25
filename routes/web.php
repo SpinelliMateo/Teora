@@ -141,12 +141,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('update_problema', [ProblemasController::class, 'update_problema'])->name('update_problema');
         Route::delete('delete_problema', [ProblemasController::class, 'delete_problema'])->name('delete_problema');
 
+        // Operarios
         Route::get('operarios', [OperarioController::class, 'index'])->name('operarios');
         Route::post('operarios', [OperarioController::class, 'store'])->name('operarios.store');
         Route::put('operarios/{operario}', [OperarioController::class, 'update'])->name('operarios.update');
         Route::delete('operarios/{operario}', [OperarioController::class, 'destroy'])->name('operarios.destroy');
-        Route::get('/operarios/etiqueta/{operario}', [OperarioController::class, 'mostrarEtiqueta'])->name('operarios.etiqueta');
         Route::get('/operarios/barcode/{operario}', [OperarioController::class, 'generarCodigoBarras'])->name('operarios.barcode');
+        Route::post('/operarios/{operario}/imprimir', [OperarioController::class, 'imprimirEtiqueta'])->name('operarios.imprimir');
+
     });
     
     Route::get('get_subproblemas_by_id', [ProblemasController::class, 'get_subproblemas_by_id'])->name('get_subproblemas_by_id');
