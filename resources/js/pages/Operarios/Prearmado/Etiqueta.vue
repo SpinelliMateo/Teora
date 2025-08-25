@@ -2,20 +2,15 @@
   <div class="min-h-screen bg-white">
     <!-- Botones de acción (no se imprimen) -->
     <div class="no-print flex justify-between items-center p-4 border-b">
-      <button 
-        @click="volver" 
-        class="text-gray-600 hover:text-gray-900 flex items-center transition-colors"
-      >
+      <button @click="volver" class="text-gray-600 hover:text-gray-900 flex items-center transition-colors">
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
         Volver
       </button>
-      
-      <button 
-        @click="imprimir"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
-      >
+
+      <button @click="imprimir"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
         Imprimir
       </button>
     </div>
@@ -23,16 +18,11 @@
     <!-- Etiqueta para imprimir -->
     <div class="print-area flex justify-center items-center min-h-screen p-8">
       <div class="etiqueta bg-white border-4 border-black shadow-lg">
-        
+
         <!-- Header con logo teora -->
         <div class="header-section">
           <div class="flex items-start">
-            <img 
-              src="/logo-teora.png" 
-              alt="Logo Teora" 
-              class="logo-img"
-              @error="handleLogoError"
-            />
+            <img src="/logo-teora.png" alt="Logo Teora" class="logo-img" @error="handleLogoError" />
             <div v-if="logoError" class="logo-fallback">teora</div>
             <div class="company-info">
               <div class="company-name">Fabrica, distribuye y garant. J. A. Stefanelli</div>
@@ -130,12 +120,8 @@
           <!-- Código de barras de Serie -->
           <div class="barcode-container">
             <div class="barcode-label">N° Serie</div>
-            <img 
-              :src="barcodeSerieUrl" 
-              :alt="`Código de barras serie ${controlStock.n_serie}`"
-              class="barcode-img"
-              @error="handleBarcodeSerieError"
-            />
+            <img :src="barcodeSerieUrl" :alt="`Código de barras serie ${controlStock.n_serie}`" class="barcode-img"
+              @error="handleBarcodeSerieError" />
             <div v-if="barcodeSerieError" class="barcode-error">
               <div class="barcode-error-text">CB Serie no disponible</div>
             </div>
@@ -145,12 +131,8 @@
           <!-- Código de barras de Modelo -->
           <div class="barcode-container">
             <div class="barcode-label">Modelo</div>
-            <img 
-              :src="barcodeModeloUrl" 
-              :alt="`Código de barras modelo ${getModeloCode()}`"
-              class="barcode-img"
-              @error="handleBarcodeModeloError"
-            />
+            <img :src="barcodeModeloUrl" :alt="`Código de barras modelo ${getModeloCode()}`" class="barcode-img"
+              @error="handleBarcodeModeloError" />
             <div v-if="barcodeModeloError" class="barcode-error">
               <div class="barcode-error-text">CB Modelo no disponible</div>
             </div>
@@ -162,12 +144,8 @@
         <div class="footer-section">
           <div class="flex justify-between items-center">
             <div class="cert-section">
-              <img 
-                src="/certificaciones.jpg" 
-                alt="Certificados IQC S" 
-                class="cert-img"
-                @error="handleCertificadosError"
-              />
+              <img src="/certificaciones.jpg" alt="Certificados IQC S" class="cert-img"
+                @error="handleCertificadosError" />
               <div v-if="certificadosError" class="cert-fallback">
                 CERT. IQC S
               </div>
@@ -211,10 +189,10 @@ export default {
 
     const getModeloCode = () => {
       if (!props.controlStock.modelo) return 'Sin modelo'
-      return props.controlStock.modelo.modelo || 
-             props.controlStock.modelo.codigo_modelo || 
-             props.controlStock.modelo.nombre_modelo || 
-             'Sin código'
+      return props.controlStock.modelo.modelo ||
+        props.controlStock.modelo.codigo_modelo ||
+        props.controlStock.modelo.nombre_modelo ||
+        'Sin código'
     }
 
     // URLS CORREGIDAS - usando las mismas que en la vista de detalle
@@ -230,8 +208,30 @@ export default {
       router.get(route('sectores.operarios.prearmado.detalle', props.controlStock.id))
     }
 
-    const imprimir = () => {
-      window.print()
+    const imprimir = async () => {
+      try {
+        const response = await fetch(route('sectores.operarios.imprimir.zebra'), {  // URL directa
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+          },
+          body: JSON.stringify({
+            controlStock_id: props.controlStock.id
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('Etiqueta enviada a imprimir');
+        } else {
+          alert('Error al imprimir: ' + result.message);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al enviar a imprimir');
+      }
     }
 
     const handleBarcodeSerieError = () => {
@@ -368,9 +368,17 @@ export default {
   font-size: 10px;
 }
 
-.fecha-cell { background: #f5f5f5; }
-.serie-cell { background: #e8e8e8; }
-.modelo-cell { background: #f0f0f0; }
+.fecha-cell {
+  background: #fff;
+}
+
+.serie-cell {
+  background: #fff;
+}
+
+.modelo-cell {
+  background: #fff;
+}
 
 /* ESPECIFICACIONES */
 .specs-section {
@@ -387,7 +395,7 @@ export default {
   border-right: 1px solid black;
   text-align: center;
   padding: 1mm;
-  background: #f8f8f8;
+  background: #fff;
   vertical-align: middle;
 }
 
@@ -417,14 +425,14 @@ export default {
 .refrigerant-table {
   width: 100%;
   border-collapse: collapse;
-  border: 3px solid black;
+  border: 2px solid black;
 }
 
 .refrigerant-cell {
   border-right: 2px solid black;
   text-align: center;
   padding: 1.5mm;
-  background: #e8e8e8;
+  background: #fff;
   vertical-align: middle;
 }
 
@@ -451,17 +459,13 @@ export default {
 /* CÓDIGOS DE BARRAS - NUEVA SECCIÓN */
 .barcodes-section {
   display: flex;
-  gap: 2mm;
   margin-bottom: 2.5mm;
-  border: 2px solid #000;
-  padding: 1.5mm;
-  background: #f5f5f5;
 }
 
 .barcode-container {
   flex: 1;
   text-align: center;
-  border: 1px solid #ccc;
+  border: 1px solid #000;
   padding: 1mm;
   background: white;
 }
@@ -548,7 +552,7 @@ export default {
   .no-print {
     display: none !important;
   }
-  
+
   .print-area {
     min-height: auto;
     padding: 0;
@@ -557,7 +561,7 @@ export default {
     align-items: center;
     page-break-inside: avoid;
   }
-  
+
   .etiqueta {
     border: 4px solid black !important;
     margin: 0;
@@ -568,27 +572,28 @@ export default {
     height: 100mm !important;
     box-shadow: none !important;
   }
-  
+
   body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  
+
   img {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
     color-adjust: exact;
   }
-  
+
   * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  
-  table, td {
+
+  table,
+  td {
     border-color: black !important;
   }
-  
+
   @page {
     size: A4;
     margin: 10mm;

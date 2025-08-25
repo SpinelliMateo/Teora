@@ -9,7 +9,7 @@ class OrdenFabricacion extends Model
 {
     protected $table = 'ordenes_fabricacion';
     
-    protected $fillable = ['estado'];
+    protected $fillable = ['fecha', 'fecha_finalizacion', 'no_orden', 'estado'];
     
     public function operarios()
     {
