@@ -53,7 +53,7 @@ const props = defineProps({
 
                     <span class="text-black text-[16px] font-medium">Sectores/Procesos</span>
                 </div>
-                <div class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
+                <Link :href="route('modelos')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" width="23" height="15" viewBox="0 0 23 15" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" clip-rule="evenodd"
@@ -61,7 +61,7 @@ const props = defineProps({
                             fill="#0D509C" />
                     </svg>
                     <span class="text-black text-[16px] font-medium">Modelos</span>
-                </div>
+                </Link>
                 <Link :href="route('operarios')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
                     <svg class="w-5 h-5 mr-3 flex-shrink-0" width="16" height="19" viewBox="0 0 16 19" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -82,6 +82,15 @@ const props = defineProps({
                     </g>
                 </svg>
                 <span class="text-black text-[16px] font-medium">Stock Mínimo</span>
+                </Link>
+                
+                <Link :href="route('sector-accesos.index')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
+                    <svg class="w-5 h-5 mr-3 flex-shrink-0" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 1C8.61553 1 7.26216 1.41054 6.11101 2.17971C4.95987 2.94888 4.06266 4.04213 3.53285 5.32122C3.00303 6.6003 2.86441 8.00776 3.13451 9.36563C3.4046 10.7235 4.07129 11.9708 5.05026 12.9497C6.02922 13.9287 7.2765 14.5954 8.63437 14.8655C9.99224 15.1356 11.3997 14.997 12.6788 14.4672C13.9579 13.9373 15.0511 13.0401 15.8203 11.889C16.5895 10.7378 17 9.38447 17 8C17 6.14348 16.2625 4.36301 14.9497 3.05025C13.637 1.7375 11.8565 1 10 1ZM10 13C9.40666 13 8.82664 12.8241 8.33329 12.4944C7.83994 12.1648 7.45542 11.6962 7.22836 11.1481C7.0013 10.5999 6.94189 9.99667 7.05765 9.41473C7.1734 8.83279 7.45912 8.29824 7.87868 7.87868C8.29824 7.45912 8.83279 7.1734 9.41473 7.05765C9.99667 6.94189 10.5999 7.0013 11.1481 7.22836C11.6962 7.45542 12.1648 7.83994 12.4944 8.33329C12.8241 8.82664 13 9.40666 13 10C13 10.7956 12.684 11.5587 12.1213 12.1213C11.5587 12.684 10.7956 13 10 13Z" 
+                              fill="#0D509C" stroke="#0D509C" stroke-width="0.5"/>
+                        <path d="M14 6L18 10L14 14M6 8H18" stroke="#0D509C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span class="text-black text-[16px] font-medium">Códigos de Sectores</span>
                 </Link>
                 <Link :href="route('problemas')"
                     class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
