@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SectorAccesosController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\OrdenFabricacionController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\BarcodeController;
+use App\Http\Controllers\ModeloController;
 use App\Http\Controllers\OperarioController;
 
 Route::get('/', function () {
@@ -113,43 +115,57 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('historial-despachos', [HistorialController::class, 'index'])->name('historial');
     });
 
-    // CONFIGURACION
-    Route::middleware(['permission:configuracion'])->group(function () {
-        Route::get('configuracion', function () {
-            return Inertia::render('configuracion/Configuracion');
-        })->name('configuracion');
-
-        //Usuarios
-        Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios');
-        Route::post('usuarios/create', [UsuarioController::class, 'store'])->name('usuarios.store');
-        Route::put('usuarios/update/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
-        Route::delete('usuarios/delete/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
-
-        // Roles
-        Route::get('roles', [RolController::class, 'index'])->name('roles');
-        Route::post('roles/create', [RolController::class, 'store'])->name('roles.store');
-        Route::put('roles/{id}', [RolController::class, 'update'])->name('roles.update');
-        Route::delete('roles/{id}', [RolController::class, 'destroy'])->name('roles.destroy');
-        
-        // Stock minimo
-        Route::get('stock-minimo', [StockMinimoController::class, 'index'])->name('stock_minimo');
-        Route::put('update_stock_minimo', [StockMinimoController::class, 'update_stock_minimo'])->name('update_stock_minimo');
-
-        // Problemas
-        Route::get('problemas', [ProblemasController::class, 'index'])->name('problemas');
-        Route::post('create_problema', [ProblemasController::class, 'create_problema'])->name('create_problema');
-        Route::put('update_problema', [ProblemasController::class, 'update_problema'])->name('update_problema');
-        Route::delete('delete_problema', [ProblemasController::class, 'delete_problema'])->name('delete_problema');
-
-        // Operarios
-        Route::get('operarios', [OperarioController::class, 'index'])->name('operarios');
-        Route::post('operarios', [OperarioController::class, 'store'])->name('operarios.store');
-        Route::put('operarios/{operario}', [OperarioController::class, 'update'])->name('operarios.update');
-        Route::delete('operarios/{operario}', [OperarioController::class, 'destroy'])->name('operarios.destroy');
-        Route::get('/operarios/barcode/{operario}', [OperarioController::class, 'generarCodigoBarras'])->name('operarios.barcode');
-        Route::post('/operarios/{operario}/imprimir', [OperarioController::class, 'imprimirEtiqueta'])->name('operarios.imprimir');
-
-    });
+   
+   // CONFIGURACION
+   Route::middleware(['permission:configuracion'])->group(function () {
+       Route::get('configuracion', function () {
+           return Inertia::render('configuracion/Configuracion');
+       })->name('configuracion');
+   
+       //Usuarios
+       Route::get('usuarios', [UsuarioController::class, 'index'])->name('usuarios');
+       Route::post('usuarios/create', [UsuarioController::class, 'store'])->name('usuarios.store');
+       Route::put('usuarios/update/{id}', [UsuarioController::class, 'update'])->name('usuarios.update');
+       Route::delete('usuarios/delete/{id}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+   
+       // Roles
+       Route::get('roles', [RolController::class, 'index'])->name('roles');
+       Route::post('roles/create', [RolController::class, 'store'])->name('roles.store');
+       Route::put('roles/{id}', [RolController::class, 'update'])->name('roles.update');
+       Route::delete('roles/{id}', [RolController::class, 'destroy'])->name('roles.destroy');
+       
+       // Códigos de Acceso por Sector - NUEVA SECCIÓN
+       Route::get('sector-accesos', [SectorAccesosController::class, 'index'])->name('sector-accesos.index');
+       Route::post('sector-accesos', [SectorAccesosController::class, 'store'])->name('sector-accesos.store');
+       Route::put('sector-accesos/{id}', [SectorAccesosController::class, 'update'])->name('sector-accesos.update');
+       Route::delete('sector-accesos/{id}', [SectorAccesosController::class, 'destroy'])->name('sector-accesos.destroy');
+       Route::put('sector-accesos/{id}/toggle-activo', [SectorAccesosController::class, 'toggleActivo'])->name('sector-accesos.toggle-activo');
+       
+       // Stock minimo
+       Route::get('stock-minimo', [StockMinimoController::class, 'index'])->name('stock_minimo');
+       Route::put('update_stock_minimo', [StockMinimoController::class, 'update_stock_minimo'])->name('update_stock_minimo');
+   
+       // Problemas
+       Route::get('problemas', [ProblemasController::class, 'index'])->name('problemas');
+       Route::post('create_problema', [ProblemasController::class, 'create_problema'])->name('create_problema');
+       Route::put('update_problema', [ProblemasController::class, 'update_problema'])->name('update_problema');
+       Route::delete('delete_problema', [ProblemasController::class, 'delete_problema'])->name('delete_problema');
+   
+       // Operarios
+       Route::get('operarios', [OperarioController::class, 'index'])->name('operarios');
+       Route::post('operarios', [OperarioController::class, 'store'])->name('operarios.store');
+       Route::put('operarios/{operario}', [OperarioController::class, 'update'])->name('operarios.update');
+       Route::delete('operarios/{operario}', [OperarioController::class, 'destroy'])->name('operarios.destroy');
+       Route::get('/operarios/barcode/{operario}', [OperarioController::class, 'generarCodigoBarras'])->name('operarios.barcode');
+       Route::post('/operarios/{operario}/imprimir', [OperarioController::class, 'imprimirEtiqueta'])->name('operarios.imprimir');
+   
+       Route::get('modelos', [ModeloController::class, 'index'])->name('modelos');
+       Route::get('modelos/create', [ModeloController::class, 'create'])->name('modelos.create');
+       Route::post('modelos', [ModeloController::class, 'store'])->name('modelos.store');
+       Route::get('modelos/{modelo}/edit', [ModeloController::class, 'edit'])->name('modelos.edit');
+       Route::put('modelos/{modelo}', [ModeloController::class, 'update'])->name('modelos.update');
+       Route::delete('modelos/{modelo}', [ModeloController::class, 'destroy'])->name('modelos.destroy');
+   });
     
     Route::get('get_subproblemas_by_id', [ProblemasController::class, 'get_subproblemas_by_id'])->name('get_subproblemas_by_id');
 });
