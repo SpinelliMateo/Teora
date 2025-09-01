@@ -265,11 +265,11 @@ const toggleActivo = (sector: any) => {
 
             <div class="flex justify-end pt-4 gap-4">
                 <button @click="cerrarModalEditar"
-                    class="px-6 py-2 border border-[#0D509C] text-[#0D509C] rounded-full hover:bg-gray-50 transition-colors">
+                    class="px-6 cursor-pointer py-2 border border-[#0D509C] text-[#0D509C] rounded-full hover:bg-gray-50 transition-colors">
                     Cancelar
                 </button>
                 <button @click="guardarEdicionSector" :disabled="loading_edit_sector || !codigo_editando"
-                    class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex cursor-pointer items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background-color: #0D509C;">
                     <span v-if="!loading_edit_sector">Actualizar</span>
                     <span v-else>Actualizando...</span>
@@ -277,54 +277,6 @@ const toggleActivo = (sector: any) => {
             </div>
         </div>
     </div>
-
-    <!-- COMENTADO: Modal Eliminar -->
-    <!--
-    <div v-if="modal_delete_sector" @click.self="cerrarModalEliminar"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
-        style="background-color: rgba(0,0,0,0.5);">
-        <div class="w-[500px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">
-                ¿Estás seguro de eliminar el código del sector 
-                <span class="font-bold">{{ getSectorNombre(sector_eliminando?.sector) }}</span>?
-            </h2>
-            <p class="text-sm text-gray-600 mb-6">
-                Los operarios de este sector no podrán acceder hasta que se configure un nuevo código.
-            </p>
-            <div class="flex justify-between gap-4">
-                <button @click="cerrarModalEliminar"
-                    class="w-[173px] py-2 bg-gray-200 text-gray-800 rounded-full hover:bg-gray-300 transition-colors">
-                    Cancelar
-                </button>
-                <button v-if="!loading_delete_sector" @click="eliminarSector"
-                    class="w-[173px] py-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors">
-                    Eliminar
-                </button>
-                <button v-if="loading_delete_sector"
-                    class="w-[173px] py-2 bg-red-600 text-white rounded-full flex justify-center">
-                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-                        <radialGradient id="a12" cx=".66" fx=".66" cy=".3125" fy=".3125" gradientTransform="scale(1.5)">
-                            <stop offset="0" stop-color="#FFFFFF"></stop>
-                            <stop offset=".3" stop-color="#FFFFFF" stop-opacity=".9"></stop>
-                            <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".6"></stop>
-                            <stop offset=".8" stop-color="#FFFFFF" stop-opacity=".3"></stop>
-                            <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
-                        </radialGradient>
-                        <circle transform-origin="center" fill="none" stroke="url(#a12)" stroke-width="15"
-                            stroke-linecap="round" stroke-dasharray="200 1000" stroke-dashoffset="0" cx="100" cy="100"
-                            r="70">
-                            <animateTransform type="rotate" attributeName="transform" calcMode="spline" dur="2"
-                                values="360;0" keyTimes="0;1" keySplines="0 0 1 1" repeatCount="indefinite">
-                            </animateTransform>
-                        </circle>
-                        <circle transform-origin="center" fill="none" opacity=".2" stroke="#FFFFFF" stroke-width="15"
-                            stroke-linecap="round" cx="100" cy="100" r="70"></circle>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-    -->
 
     <Head title="Códigos de Sectores" />
 
@@ -339,20 +291,6 @@ const toggleActivo = (sector: any) => {
                 </button>
                 <h1 class="text-[32px] font-bold text-gray-800">Códigos de Acceso por Sector</h1>
             </div>
-
-            <!-- COMENTADO: Botón para añadir código -->
-            <!--
-            <div class="flex justify-end items-center">
-                <button @click="modal_create_sector = true"
-                    class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer hover:opacity-90 transition-opacity"
-                    style="background-color: #0D509C;">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 1V15M1 8H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    Añadir Código
-                </button>
-            </div>
-            -->
 
             <div class="flex flex-col gap-4">
                 <template v-for="sector in props.sectores" :key="sector.id">
@@ -404,18 +342,6 @@ const toggleActivo = (sector: any) => {
                                 </svg>
                             </button>
 
-                            <!-- COMENTADO: Botón Eliminar -->
-                            <!--
-                            <button class="cursor-pointer hover:opacity-70 p-2 rounded-lg hover:bg-gray-100 transition-colors" 
-                                @click="abrirModalEliminar(sector)">
-                                <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M14 1H10.5L9.5 0H4.5L3.5 1H0V3H14M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16Z"
-                                        fill="#EF4444" />
-                                </svg>
-                            </button>
-                            -->
                         </div>
                     </div>
                 </template>
@@ -430,14 +356,7 @@ const toggleActivo = (sector: any) => {
                     </div>
                     <h3 class="text-lg font-medium text-gray-900 mb-2">No hay sectores configurados</h3>
                     <p class="text-gray-600 mb-6">Los sectores deben ser configurados desde el sistema.</p>
-                    <!-- COMENTADO: Botón para crear primer código -->
-                    <!--
-                    <button @click="modal_create_sector = true"
-                        class="px-6 py-2 text-white rounded-full cursor-pointer hover:opacity-90 transition-opacity"
-                        style="background-color: #0D509C;">
-                        Crear primer código
-                    </button>
-                    -->
+
                 </div>
             </div>
         </div>

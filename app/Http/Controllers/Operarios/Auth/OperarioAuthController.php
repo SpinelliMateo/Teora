@@ -47,7 +47,7 @@ class OperarioAuthController extends Controller
     public function logout()
     {
         Session::forget(['operario_sector', 'operario_auth']);
-        return redirect()->route('operarios.login');
+        return redirect()->route('sectores.operarios.login');
     }
 
     private function getRutaSector(string $sector): string

@@ -53,7 +53,6 @@ class PrearmadoController extends Controller
         ]);
 
         try {
-            // Obtener el primer modelo y su orden de fabricación
             $modeloId = $request->modelos[0];
             $modelos = $this->prearmadoService->obtenerModelosPendientes($request->operario_id);
             $modeloData = $modelos->firstWhere('id', $modeloId);
