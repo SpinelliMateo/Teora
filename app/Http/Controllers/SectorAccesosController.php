@@ -57,6 +57,14 @@ class SectorAccesosController extends Controller
             'codigo.max' => 'El código no puede tener más de 20 caracteres'
         ]);
 
+        $codigoExiste = SectorAcceso::get()->contains(function ($sector) use ($request) {
+            return Hash::check($request->codigo, $sector->codigo_hash);
+        });
+
+        if ($codigoExiste) {
+            return back()->withErrors(['codigo' => 'Ya existe este código en otro sector'])->withInput();
+        }
+
         $sectorAcceso->update([
             'codigo_hash' => Hash::make($request->codigo),
             'activo' => $request->activo ?? true
