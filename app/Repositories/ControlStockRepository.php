@@ -4,8 +4,10 @@ namespace App\Repositories;
 
 use App\Contracts\ControlStockRepositoryInterface;
 use App\Models\ControlStock;
+use App\Models\Operario;
 use Illuminate\Support\Collection;
 use Carbon\Carbon;
+use League\Uri\Idna\Option;
 
 class ControlStockRepository implements ControlStockRepositoryInterface
 {
@@ -14,6 +16,13 @@ class ControlStockRepository implements ControlStockRepositoryInterface
     {
         return ControlStock::with('modelo')
             ->where('n_serie', $numeroSerie)
+            ->first();
+    }
+
+    public function findByNumeroMotor(string $numeroMotor): ?ControlStock
+    {
+        return ControlStock::with('modelo')
+            ->where('equipo', $numeroMotor)
             ->first();
     }
 

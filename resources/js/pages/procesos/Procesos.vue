@@ -220,7 +220,7 @@ const handleSearch = () => {
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_prearmador?.nombre
-                            }}</td>
+                            }} {{ item.operario_prearmador?.apellido }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div v-if="item.control_stock.fecha_inyectado" class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -251,7 +251,7 @@ const handleSearch = () => {
                                     --/--/----
                                 </div>
                             </td>
-                            <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_armador?.nombre }}
+                            <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_armador?.nombre }} {{ item.operario_armador?.apellido }}
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.control_stock.equipo != '0'
                                 ?
@@ -272,7 +272,7 @@ const handleSearch = () => {
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_embalador?.nombre
-                            }}</td>
+                            }} {{ item.operario_embalador?.apellido }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div v-if="item.control_stock.fecha_salida" class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
