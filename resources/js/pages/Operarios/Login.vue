@@ -1,79 +1,66 @@
 <!-- resources/js/Pages/Operarios/Login.vue -->
 
 <template>
-    <div>
+    <div class="flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10" style="background-color: #F4F4F4;">
         <Head title="Acceso Operarios" />
-        
-        <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-            <div class="max-w-md w-full space-y-8">
-                <div>
-                    <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-                        <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                    </div>
-                    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                        Acceso por Sector
-                    </h2>
-                    <p class="mt-2 text-center text-sm text-gray-600">
-                        Ingrese el código de su sector
-                    </p>
-                </div>
 
-                <form class="mt-8 space-y-6" @submit.prevent="handleSubmit">
-                    <div class="rounded-md shadow-sm -space-y-px">
-                        <div>
-                            <label for="codigo" class="sr-only">
-                                Código de sector
-                            </label>
-                            <input
-                                id="codigo"
-                                v-model="form.codigo"
-                                type="text"
-                                required
-                                class="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                                placeholder="Código del sector"
-                                @input="form.codigo = $event.target.value.toUpperCase()"
-                                autofocus
-                            />
-                        </div>
-                    </div>
-
-                    <div v-if="form.errors.codigo" class="rounded-md bg-red-50 p-4">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-red-800">
-                                    {{ form.errors.codigo }}
-                                </h3>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <span v-if="form.processing" class="flex items-center">
-                                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Verificando...
-                            </span>
-                            <span v-else>
-                                Ingresar
-                            </span>
-                        </button>
-                    </div>
-                </form>
+        <div class="bg-white p-10 w-[392px]">
+            <div class="flex justify-center">
+                <img 
+                    :src="'/logo-teora.png'" 
+                    alt="Logo" 
+                    class="transition-all duration-300"
+                />
             </div>
+
+            <h2 class="text-black w-full text-center font-semibold text-[32px] mt-4">
+                Acceso por Sector
+            </h2>
+            <p class="text-center text-sm mt-2" style="color: #5B5B5B;">
+                Ingrese el código de su sector
+            </p>
+
+            <form @submit.prevent="handleSubmit" class="flex flex-col gap-6 mt-5">
+                <div class="grid gap-6">
+                    <div class="grid gap-2">
+                        <label for="codigo" class="" style="color: #5B5B5B;">
+                            Código de sector
+                        </label>
+                        <input
+                            id="codigo"
+                            v-model="form.codigo"
+                            type="text"
+                            required
+                            class="py-2 border border-neutral-300 focus:outline-none text-black rounded-md px-2"
+                            placeholder="Código del sector"
+                            @input="form.codigo = $event.target.value.toUpperCase()"
+                            autofocus
+                        />
+                        
+                        <div v-if="form.errors.codigo" class="text-red-600 text-sm mt-1">
+                            {{ form.errors.codigo }}
+                        </div>
+                    </div>
+
+                    <button
+                        type="submit"
+                        :disabled="form.processing"
+                        class="mt-4 w-full py-2 px-4 text-white font-medium rounded-md transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                        style="background-color: #0D509C;"
+                    >
+                        <span v-if="form.processing" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Verificando...
+                        </span>
+                        <span v-else>
+                            Ingresar
+                        </span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </template>

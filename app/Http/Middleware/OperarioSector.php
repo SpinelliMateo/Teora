@@ -17,7 +17,7 @@ class OperarioSector
     {
         // Verificar si el operario está autenticado
         if (!Session::has('operario_auth') || !Session::has('operario_sector')) {
-            return redirect()->route('operarios.login');
+            return redirect()->route('sectores.operarios.login');
         }
 
         $sectorOperario = Session::get('operario_sector');
