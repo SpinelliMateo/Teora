@@ -80,18 +80,6 @@ function handleKeyPress(event: KeyboardEvent) {
           />
         </div>
 
-        <!-- Botón Grabar -->
-        <div class="text-center">
-          <button
-            class="w-full max-w-80 h-10 rounded-[20px] bg-sky-800 text-white font-medium
-                   hover:bg-sky-900 disabled:opacity-50 disabled:cursor-not-allowed 
-                   transition text-sm md:text-base"
-            :disabled="!puedeGrabar()"
-            @click="grabar"
-          >
-            {{ cargando ? 'Procesando...' : 'Grabar' }}
-          </button>
-        </div>
       </div>
     </div>
   </div>

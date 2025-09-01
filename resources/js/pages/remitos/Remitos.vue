@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { ref} from 'vue';
+import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
@@ -176,7 +176,7 @@ const create_remito = () => {
                     error(errors.message);
                 } else {
                     // Manejar errores de validación
-                    const errorMessages = [];
+                    const errorMessages: any[] = [];
                     Object.keys(errors).forEach(key => {
                         if (Array.isArray(errors[key])) {
                             errorMessages.push(...errors[key]);
@@ -216,7 +216,7 @@ const create_remito = () => {
                     error(errors.message);
                 } else {
                     // Manejar errores de validación
-                    const errorMessages = [];
+                    const errorMessages: any[] = [];
                     Object.keys(errors).forEach(key => {
                         if (Array.isArray(errors[key])) {
                             errorMessages.push(...errors[key]);
@@ -253,7 +253,7 @@ const create_remito = () => {
 const timer = ref(null);
 const searchTerm = ref('');
 
-const handle_filtro = (filtro, search = null) => {
+const handle_filtro = (filtro: string | null, search = null) => {
     searchTerm.value = '';
     router.get('/remitos', { filtro: filtro ?? props.filtro, search: search }, {
         preserveState: true, // opcional, mantiene el estado actual (útil para scroll o inputs)
@@ -263,7 +263,7 @@ const handle_filtro = (filtro, search = null) => {
 }
 
 const handleSearch = () => {
-    clearTimeout(timer.value);
+    clearTimeout(timer.value as any);
     timer.value = setTimeout(() => {
         router.get('/remitos', {
             search: searchTerm.value,
@@ -275,7 +275,7 @@ const handleSearch = () => {
     }, 500);
 }
 
-const handle_change_estado = ((remito, estado) => {
+const handle_change_estado = ((remito, estado: string) => {
     formDespachado.id = remito.id;
     formDespachado.estado = estado;
     formDespachado.put('/remitos/despachar/' + remito.id, {
@@ -323,6 +323,13 @@ const handle_change_estado = ((remito, estado) => {
                             :class="filtro == 'EN PROCESO' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                     </div>
                     <div class="flex flex-col items-center">
+                        <button @click="handle_filtro('DESPACHO')" class="text-lg cursor-pointer"
+                            :class="filtro == 'DESPACHO' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">EN
+                            DESPACHO</button>
+                        <div class="h-[2px]  w-[110%] mt-1"
+                            :class="filtro == 'DESPACHO' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
+                    </div>
+                    <div class="flex flex-col items-center">
                         <button @click="handle_filtro('FINALIZADOS')" class="text-lg cursor-pointer"
                             :class="filtro == 'FINALIZADOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">FINALIZADOS</button>
                         <div class="h-[2px]  w-[110%] mt-1"
@@ -343,7 +350,7 @@ const handle_change_estado = ((remito, estado) => {
                             </svg>
                         </span>
                     </div>
-                    <button v-if="can.gestionar" @click="abrirModal"
+                    <button v-if="can?.gestionar" @click="abrirModal"
                         class="bg-[#0D509C] text-white px-4 py-2 rounded-full w-[173px] cursor-pointer">Añadir
                         remito</button>
                 </div>
@@ -351,12 +358,12 @@ const handle_change_estado = ((remito, estado) => {
             <div class="grid grid-cols-5 gap-6 mt-2">
                 <template v-for="remito in (remitos as any)?.data" :key="remito?.id">
                     <div v-if="remito"
-                        @click="can.gestionar && remito.estado !== 'finalizado' ? abrirModalEdicion(remito) : null"
+                        @click="can?.gestionar && remito.estado !== 'finalizado' ? abrirModalEdicion(remito) : null"
                         :class="[
                             'min-h-[128px] w-full border border-gray-200 px-2 py-3 flex flex-col gap-3 transition-shadow',
                             remito.estado === 'finalizado'
                                 ? 'bg-gray-100 cursor-not-allowed opacity-75'
-                                : can.gestionar ? 'bg-white cursor-pointer hover:shadow-md' : 'bg-white cursor-default'
+                                : can?.gestionar ? 'bg-white cursor-pointer hover:shadow-md' : 'bg-white cursor-default'
                         ]">
                         <div class="flex justify-between">
                             <h3 class="font-extrabold text-lg flex items-center gap-2">
@@ -366,7 +373,7 @@ const handle_change_estado = ((remito, estado) => {
                                     FINALIZADO
                                 </span>
                             </h3>
-                            <div @click.stop v-if="can.gestionar">
+                            <div @click.stop v-if="can?.gestionar">
                                 <button @click="handle_change_estado(remito, true)" v-if="remito.estado === 'procesado'"
                                     class="cursor-pointer flex justify-center items-center w-full h-full">
                                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
@@ -430,7 +437,8 @@ const handle_change_estado = ((remito, estado) => {
                     <div class="flex flex-col gap-1.5 mb-6">
                         <div class="flex justify-between items-center mb-4 h-10">
                             <h2 class="text-xl font-bold text-black">
-                                {{ editando ? `Editar Remito N°${(remito_seleccionado as any)?.n_remito}` : 'Nuevo Remito' }}
+                                {{ editando ? `Editar Remito N°${(remito_seleccionado as any)?.n_remito}`
+                                    : 'Nuevo Remito' }}
                             </h2>
                             <div v-if="editando" class="flex items-center gap-2">
                                 <Transition name="delete-confirm" mode="out-in">
@@ -466,8 +474,8 @@ const handle_change_estado = ((remito, estado) => {
                         <div class="flex gap-8 w-full justify-between">
                             <div class="flex flex-col gap-1 w-full">
                                 <label for="n_remito" class="text-[#5B5B5B]">N° de remito</label>
-                                <input type="text" id="n_remito" v-model="form.n_remito" readonly
-                                    class="border border-gray-300 p-2 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed" />
+                                <input type="text" id="n_remito" v-model="form.n_remito"
+                                    class="border border-gray-300 p-2 rounded-md" />
                             </div>
                             <div class="flex flex-col gap-1 w-full">
                                 <label for="cliente" class="text-[#5B5B5B]">Cliente</label>

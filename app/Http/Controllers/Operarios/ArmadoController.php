@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ArmadoController extends Controller
@@ -39,12 +40,26 @@ class ArmadoController extends Controller
 
         return response()->json($resultado);
     }
-
-    public function obtenerOperarios(): JsonResponse
+    public function validarMotor(Request $request): JsonResponse
     {
-        $operarios = $this->armadoService->obtenerOperariosArmadores();
+        $request->validate([
+            'numero_motor' => 'required|string'
+        ]);
+        
+        $resultado = $this->armadoService->validarMotorParaArmado($request->numero_motor);
 
-        return response()->json(['operarios' => $operarios]);
+        return response()->json($resultado);
+    }
+
+    public function validarOperario(Request $request): JsonResponse
+    {
+        $request->validate([
+            'operario' => 'required|string'
+        ]);
+
+        $resultado = $this->armadoService->validarOperarioParaArmado($request->operario);
+
+        return response()->json($resultado);
     }
 
     public function store(Request $request): RedirectResponse
@@ -52,14 +67,14 @@ class ArmadoController extends Controller
         $request->validate([
             'numero_serie' => 'required|string',
             'numero_motor' => 'required|string|unique:control_stock,equipo',
-            'operario_id' => 'required|exists:operarios,id'
+            'operario' => 'required|exists:operarios,codigo_qr'
         ]);
-
+        
         try {
             $resultado = $this->armadoService->procesarArmado(
                 $request->numero_serie,
                 $request->numero_motor,
-                $request->operario_id
+                $request->operario
             );
 
             if (!$resultado['success']) {

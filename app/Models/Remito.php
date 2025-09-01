@@ -12,6 +12,7 @@ class Remito extends Model
     protected $table = 'remitos';
 
     protected $fillable = [
+        'n_remito',
         'numero',
         'estado',
         'cliente',

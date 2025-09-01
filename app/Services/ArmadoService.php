@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Contracts\ControlStockRepositoryInterface;
 use App\Contracts\OperarioRepositoryInterface;
 use App\Models\ControlStock;
+use App\Models\Operario;
+use App\Models\ProcesosOperarios;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +39,7 @@ class ArmadoService
         if (!$this->isValidForArmado($controlStock)) {
             return [
                 'success' => false,
-                'message' => '⚠️ El producto con serie ' . $numeroSerie . ' no está en condiciones para ser armado.',
+                'message' => '❌ El producto con serie ' . $numeroSerie . ' no está en condiciones para ser armado.',
                 'data' => null
             ];
         }
@@ -49,7 +51,52 @@ class ArmadoService
         ];
     }
 
-    public function procesarArmado(string $numeroSerie, string $numeroMotor, int $operarioId): array
+    public function validarMotorParaArmado(string $numeroMotor): array
+    {
+        $controlStock = $this->controlStockRepository->findByNumeroMotor($numeroMotor);
+
+        if ($controlStock) {
+            return [
+                'success' => false,
+                'message' => '❌ No se puede usar el motor con el número ' . $numeroMotor . ' porque ya lo está usando el número de serie ' . $controlStock->n_serie . '.',
+                'data' => null
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Motor válido para armado'
+        ];
+    }
+    public function validarOperarioParaArmado(string $operarioCodigo): array
+    {
+        $operarios = $this->operarioRepository->getOperariosArmadores();
+
+        if (!$operarios) {
+            return [
+                'success' => false,
+                'message' => '❌ El operario con el código ' . $operarioCodigo . ' no es un armador válido.',
+                'data' => null
+            ];
+        }else{
+            $operario = $operarios->firstWhere('codigo_qr', $operarioCodigo);
+            if (!$operario) {
+                return [
+                    'success' => false,
+                    'message' => '❌ El operario con el código ' . $operarioCodigo . ' no es un armador válido.',
+                    'data' => null
+                ];
+            }
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Operario válido para armado',
+            'data' => $operario
+        ];
+    }
+
+    public function procesarArmado(string $numeroSerie, string $numeroMotor, string $operarioCodigo): array
     {
         $controlStock = $this->controlStockRepository->findByNumeroSerie($numeroSerie);
 
@@ -60,7 +107,7 @@ class ArmadoService
             ];
         }
 
-        $this->marcarComoArmado($controlStock, $numeroMotor, $operarioId);
+        $this->marcarComoArmado($controlStock, $numeroMotor, $operarioCodigo);
 
         return [
             'success' => true,
@@ -78,10 +125,10 @@ class ArmadoService
             ->whereDate('control_stock.fecha_armado', $hoy)
             ->whereNotNull('control_stock.fecha_armado')
             ->select(
-                'operarios.nombre as operario',
+                DB::raw("CONCAT(operarios.nombre, ' ', operarios.apellido) as operario"),
                 DB::raw('COUNT(*) as cantidad_armados')
             )
-            ->groupBy('operarios.id', 'operarios.nombre')
+            ->groupBy('operarios.id', 'operarios.nombre', 'operarios.apellido')
             ->orderByDesc('cantidad_armados')
             ->get();
 
@@ -104,21 +151,19 @@ class ArmadoService
                is_null($controlStock->fecha_armado);
     }
 
-    private function marcarComoArmado(ControlStock $controlStock, string $numeroMotor, int $operarioId): void
+    private function marcarComoArmado(ControlStock $controlStock, string $numeroMotor, string $operarioCodigo): void
     {
-        DB::transaction(function () use ($controlStock, $numeroMotor, $operarioId) {
-            // Actualizar control_stock
+        DB::transaction(function () use ($controlStock, $numeroMotor, $operarioCodigo) {
             $controlStock->update([
                 'equipo' => $numeroMotor,
                 'fecha_armado' => Carbon::now()
             ]);
 
-            // Crear registro en procesos_operarios
-            DB::table('procesos_operarios')->insert([
-                'control_stock_id' => $controlStock->id,
-                'operario_armador_id' => $operarioId,
-                'created_at' => now(),
-                'updated_at' => now()
+            $registro = ProcesosOperarios::where('control_stock_id', $controlStock->id);
+            $operario = Operario::where('codigo_qr', $operarioCodigo)->first();
+            $registro->update([
+                'operario_armador_id' => $operario->id,
+                'updated_at' => Carbon::now()
             ]);
         });
     }

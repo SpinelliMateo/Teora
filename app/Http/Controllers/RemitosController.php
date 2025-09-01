@@ -18,6 +18,8 @@ class RemitosController extends Controller
 
         if($filtro == 'FINALIZADOS'){
             $remitos->where('estado', 'finalizado');
+        }else if($filtro == 'DESPACHO'){
+            $remitos->where('estado', 'despachado');
         }else{
             $remitos->whereNot('estado', 'finalizado');
         }
@@ -174,13 +176,14 @@ class RemitosController extends Controller
     {
         try {
             $validated = $request->validate([
-                'n_remito' => 'required|string|max:255',
+                'n_remito' => 'required|string|unique:remitos,n_remito,' . $id . '|max:255',
                 'cliente' => 'required|string|max:255',
                 'modelos' => 'required|array|min:1',
                 'modelos.*.modelo_id' => 'required|exists:modelos,id',
                 'modelos.*.cantidad' => 'required|integer|min:1',
             ], [
                 'n_remito.required' => 'El número de remito es obligatorio.',
+                'n_remito.unique' => 'El número de remito ya existe, no puede ser duplicado.',
                 'cliente.required' => 'El nombre del cliente es obligatorio.',
                 'cliente.max' => 'El nombre del cliente no puede exceder 255 caracteres.',
                 'modelos.required' => 'Debe seleccionar al menos un modelo.',
@@ -191,13 +194,12 @@ class RemitosController extends Controller
                 'modelos.*.cantidad.integer' => 'La cantidad debe ser un número entero.',
                 'modelos.*.cantidad.min' => 'La cantidad debe ser mayor a 0.',
             ]);
-
             $remito = Remito::findOrFail($id);
             
             // Verificar si el remito está finalizado
             if ($remito->estado === 'finalizado' || $remito->estado === 'despachado') {
                 return back()->withErrors([
-                    'error' => 'No se puede editar el remito N°' . $remito->n_remito . ' porque ya está finalizado. Solo los remitos en proceso pueden ser modificados.'
+                    'error' => 'No se puede editar el remito N°' . $remito->n_remito . ' porque está ' . $remito->estado . '. Solo los remitos en proceso pueden ser modificados.'
                 ]);
             }
             
@@ -209,13 +211,12 @@ class RemitosController extends Controller
                     'error' => 'No se pueden seleccionar modelos duplicados en el mismo remito. Por favor, revisa tu selección.'
                 ])->withInput();
             }
-            
+
             // Actualizar los datos básicos del remito
             $remito->update([
                 'n_remito' => $validated['n_remito'],
                 'cliente' => $validated['cliente'],
             ]);
-
             // Desvincula todos los modelos actuales
             $remito->modelos()->detach();
 
