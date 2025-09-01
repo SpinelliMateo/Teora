@@ -15,7 +15,6 @@ class OperarioSector
      */
     public function handle(Request $request, Closure $next, ?string $sectorRequerido = null): Response
     {
-        // Verificar si el operario está autenticado
         if (!Session::has('operario_auth') || !Session::has('operario_sector')) {
             return redirect()->route('sectores.operarios.login');
         }

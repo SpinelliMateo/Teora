@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\SectorAcceso;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class OperarioAuthController extends Controller
@@ -24,21 +26,53 @@ class OperarioAuthController extends Controller
             'codigo.min' => 'El código debe tener al menos 3 caracteres'
         ]);
 
-        $sectores = SectorAcceso::where('activo', true)->get();
+        // Limpiar cache para evitar datos obsoletos
+        Cache::flush();
+        
+        // Limpiar cualquier sesión anterior
+        Session::forget(['operario_sector', 'operario_auth']);
+
+        // Obtener sectores activos sin cache
+        $sectores = SectorAcceso::where('activo', true)
+            ->orderBy('updated_at', 'desc') // Obtener los más recientemente actualizados primero
+            ->get();
+
+        // Log para debug
+        Log::info('Intentando login con código: ' . $request->codigo);
+        Log::info('Sectores encontrados: ', $sectores->pluck('sector', 'id')->toArray());
+
+        $codigoValido = false;
+        $sectorEncontrado = null;
 
         foreach ($sectores as $sectorAcceso) {
-
+            // Log del intento de verificación
+            Log::info("Verificando sector: {$sectorAcceso->sector} con código proporcionado");
+            
             if ($sectorAcceso->verificarCodigo($request->codigo)) {
-     
-                Session::put('operario_sector', $sectorAcceso->sector);
-                Session::put('operario_auth', true);
+                $codigoValido = true;
+                $sectorEncontrado = $sectorAcceso;
                 
-                config(['session.lifetime' => 43200]); 
-                
-                return redirect()->route('sectores.operarios.' . $this->getRutaSector($sectorAcceso->sector));
+                Log::info("Código válido encontrado para sector: {$sectorAcceso->sector}");
+                break; // Salir del loop una vez encontrado
             }
         }
 
+        if ($codigoValido && $sectorEncontrado) {
+            // Establecer sesión
+            Session::put('operario_sector', $sectorEncontrado->sector);
+            Session::put('operario_auth', true);
+            Session::put('operario_sector_id', $sectorEncontrado->id); // Para mayor control
+            
+            // Configurar tiempo de sesión (30 días en minutos)
+            config(['session.lifetime' => 43200]); 
+            
+            Log::info("Login exitoso para sector: {$sectorEncontrado->sector}");
+            
+            return redirect()->route('sectores.operarios.' . $this->getRutaSector($sectorEncontrado->sector));
+        }
+
+        Log::warning("Intento de login fallido con código: {$request->codigo}");
+        
         return back()->withErrors([
             'codigo' => 'Código incorrecto o inactivo'
         ])->withInput();
@@ -46,7 +80,11 @@ class OperarioAuthController extends Controller
 
     public function logout()
     {
-        Session::forget(['operario_sector', 'operario_auth']);
+        Log::info('Cerrando sesión de operario');
+        
+        // Limpiar completamente la sesión
+        Session::flush(); // Esto limpia toda la sesión
+        
         return redirect()->route('sectores.operarios.login');
     }
 
@@ -54,11 +92,24 @@ class OperarioAuthController extends Controller
     {
         return match($sector) {
             'prearmado' => 'sector.prearmado',
-            'inyectado' => 'inyectado.index', // Necesitarás agregar el name a esta ruta
+            'inyectado' => 'inyectado.index',
             'armado' => 'armado.index',
             'embalado' => 'embalado.index',
             'despacho' => 'despacho.index',
             default => 'sector.prearmado'
         };
+    }
+
+    /**
+     * Método para verificar el estado actual de la sesión (útil para debug)
+     */
+    public function checkSession()
+    {
+        return response()->json([
+            'operario_auth' => Session::get('operario_auth'),
+            'operario_sector' => Session::get('operario_sector'),
+            'operario_sector_id' => Session::get('operario_sector_id'),
+            'session_id' => Session::getId()
+        ]);
     }
 }
