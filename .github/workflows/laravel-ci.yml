@@ -44,5 +44,5 @@ jobs:
       - name: Laravel smoke check
         run: |
           php artisan --version
-          php artisan route:list --compact
+          php artisan route:list
           php artisan about
