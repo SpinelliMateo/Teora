@@ -46,7 +46,7 @@ Route::prefix('operarios')->name('operarios.')->middleware(['operario_sector'])-
         Route::get('/armado', [ArmadoController::class, 'index'])->name('armado.index');
         Route::post('/armado/validar', [ArmadoController::class, 'validarProducto'])->name('armado.validar');
         Route::post('/armado/validar-step-2', [ArmadoController::class, 'validarMotor'])->name('armado.validar-motor');
-    Route::post('/armado/validar-operario', [ArmadoController::class, 'validarOperario'])->name('armado.validar-operario');
+        Route::post('/armado/validar-operario', [ArmadoController::class, 'validarOperario'])->name('armado.validar-operario');
         Route::post('/armado', [ArmadoController::class, 'store'])->name('armado.store');
     });
 
