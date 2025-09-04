@@ -53,11 +53,11 @@ Route::prefix('operarios')->name('operarios.')->middleware(['operario_sector'])-
     // Embalado
     Route::middleware(['operario_sector:embalado'])->group(function () {
         Route::get('/embalado', [EmbaladoController::class, 'index'])->name('embalado.index');
-        Route::post('/embalado/validar-productos', [EmbaladoController::class, 'validarProductos'])->name('embalado.validar-productos');
+        Route::post('/embalado/validar-serie', [EmbaladoController::class, 'validarSerie'])->name('embalado.validar-serie');
         Route::get('/embalado/operarios', [EmbaladoController::class, 'obtenerOperarios'])->name('embalado.operarios');
         Route::post('/embalado', [EmbaladoController::class, 'store'])->name('embalado.store');
         Route::post('/embalado/confirmar', [EmbaladoController::class, 'confirmarEmbalado'])->name('embalado.confirmar');
         Route::get('/embalado/etiquetas', [EmbaladoController::class, 'etiquetas'])->name('embalado.etiquetas');
-        Route::post('/embalado/reimprimir-etiqueta', [EmbaladoController::class, 'reimprimirEtiqueta'])->name('embalado.reimprimir-etiqueta');
+        Route::post('/embalado/imprimir-etiqueta', [EmbaladoController::class, 'imprimirEtiqueta'])->name('embalado.imprimir-etiqueta');
     });
 });

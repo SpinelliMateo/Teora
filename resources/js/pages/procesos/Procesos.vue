@@ -7,7 +7,7 @@ import { useForm } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 import 'vue-select/dist/vue-select.css';
 
-const { success, error, warning, info } = useToast();
+const { success, error } = useToast();
 
 const props = defineProps({
     procesos: Array,
@@ -16,8 +16,6 @@ const props = defineProps({
     operarios: Array,
     can: Object
 })
-
-console.log(props.procesos);
 
 const form = useForm({
     id: '',
@@ -35,20 +33,38 @@ const form = useForm({
     operario_embalado: '',
 });
 
-
-
-const open_filtros = ref(false);
-
-
 const loading_proceso = ref(false);
 const proceso_modal = ref(false);
 const serie_seleccionada = ref(null);
+
+const toDB = (fecha: string, hora: string) => {
+    if (!fecha || !hora) return null;
+
+    // Construyo la fecha con hora local
+    const [year, month, day] = fecha.split('-').map(Number);
+    const [hour, minute] = hora.split(':').map(Number);
+
+    // Creo un Date en local
+    let d = new Date(year, month - 1, day, hour, minute);
+
+    // Devuelvo en formato para la BDD
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+    // ej: "2025-09-02 09:00:00"
+};
+
+
 const update_proceso = () => {
     loading_proceso.value = true;
+
+    form.fecha_prearmado = toDB(form.fecha_prearmado, form.hora_prearmado);
+    form.fecha_inyectado = toDB(form.fecha_inyectado, form.hora_inyectado);
+    form.fecha_armado = toDB(form.fecha_armado, form.hora_armado);
+    form.fecha_embalado = toDB(form.fecha_embalado, form.hora_embalado);
+
+
     form.id = (serie_seleccionada.value as any).control_stock.id;
     form.put('/update_proceso', {
         onError(errors) {
-            console.log(errors.message);
             const firstError = Object.values(errors)[0];
             if (firstError) {
                 error(firstError);
@@ -65,11 +81,21 @@ const update_proceso = () => {
     form.reset();
 }
 
+
 watch(serie_seleccionada, (nuevoValor: any) => {
     if (nuevoValor) {
-        console.log(nuevoValor);
-        const formatFecha = (datetime) => datetime ? datetime.split(' ')[0] : '';
-        const formatHora = (datetime) => datetime ? datetime.split(' ')[1]?.slice(0, 5) : '';
+        console.log(nuevoValor, 'hasta aca llega copado');
+        const formatFecha = (datetime: string) => {
+            if (!datetime) return '';
+            const d = new Date(datetime);
+            return d.toISOString().split('T')[0]; // YYYY-MM-DD
+        };
+
+        const formatHora = (datetime: string) => {
+            if (!datetime) return '';
+            const d = new Date(datetime);
+            return d.toTimeString().slice(0, 5); // HH:mm local
+        };
 
 
         form.id = nuevoValor.control_stock.id;
@@ -85,6 +111,8 @@ watch(serie_seleccionada, (nuevoValor: any) => {
         form.fecha_embalado = formatFecha(nuevoValor.control_stock.fecha_embalado);
         form.hora_embalado = formatHora(nuevoValor.control_stock.fecha_embalado);
         form.operario_embalado = nuevoValor.operario_embalador?.id || '';
+
+        console.log(form.fecha_prearmado, form.hora_prearmado);
     }
 });
 
@@ -92,7 +120,7 @@ watch(serie_seleccionada, (nuevoValor: any) => {
 
 const timer = ref(null);
 const searchTerm = ref('');
-const handle_filtro = (filtro, search = null) => {
+const handle_filtro = (filtro: string, search = null) => {
     searchTerm.value = '';
     router.get('/seguimiento-por-proceso', { filtro: filtro ?? props.filtro, search: search }, {
         preserveState: true, // opcional, mantiene el estado actual (útil para scroll o inputs)
@@ -195,8 +223,8 @@ const handleSearch = () => {
                             <th
                                 class="py-3 px-4 text-center text-sm font-medium text-gray-600 uppercase tracking-wider">
                                 SALIDA</th>
-                            <th
-                                v-if="can.gestionar" class="py-3 px-4 text-center text-sm font-medium text-gray-600 uppercase tracking-wider">
+                            <th v-if="can.gestionar"
+                                class="py-3 px-4 text-center text-sm font-medium text-gray-600 uppercase tracking-wider">
                             </th>
                         </tr>
                     </thead>
@@ -251,7 +279,8 @@ const handleSearch = () => {
                                     --/--/----
                                 </div>
                             </td>
-                            <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_armador?.nombre }} {{ item.operario_armador?.apellido }}
+                            <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_armador?.nombre }}
+                                {{ item.operario_armador?.apellido }}
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.control_stock.equipo != '0'
                                 ?
@@ -353,7 +382,7 @@ const handleSearch = () => {
                                     </option>
                                     <option v-for="operario in operarios" :key="(operario as any).id"
                                         :value="(operario as any).id">
-                                        {{ (operario as any).nombre }}
+                                        {{ (operario as any).nombre }} {{ (operario as any).apellido }}
                                     </option>
                                 </select>
                             </div>
@@ -416,7 +445,7 @@ const handleSearch = () => {
                                     </option>
                                     <option v-for="operario in operarios" :key="(operario as any).id"
                                         :value="(operario as any).id">
-                                        {{ (operario as any).nombre }}
+                                        {{ (operario as any).nombre }} {{ (operario as any).apellido }}
                                     </option>
                                 </select>
                             </div>
@@ -459,7 +488,7 @@ const handleSearch = () => {
                                     </option>
                                     <option v-for="operario in operarios" :key="(operario as any).id"
                                         :value="(operario as any).id">
-                                        {{ (operario as any).nombre }}
+                                        {{ (operario as any).nombre }} {{ (operario as any).apellido }}
                                     </option>
                                 </select>
                             </div>

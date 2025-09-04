@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { Head, router, usePage } from '@inertiajs/vue3'
-import { ref, computed, watch, nextTick } from 'vue'
+import { Head, router } from '@inertiajs/vue3'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import axios from 'axios'
+import { useToast } from '@/composables/useToast'
 
-type Operario = { id: number; nombre: string }
+const { success, error } = useToast()
+
+type Operario = { id: number; nombre: string; apellido: string; codigo_qr: string }
 type ControlStock = {
   id: number
   n_serie: string
@@ -23,30 +26,38 @@ type ProductoValidado = {
   mensaje?: string
   producto?: ControlStock
 }
-
 type ProductoYaEmbalado = {
   n_serie: string
   fecha_embalado: string
   operario: string
 }
+type ProductoImprimir = {
+  id: number
+  n_serie: string
+  modelo: { modelo_nombre: string }
+  fecha_embalado: string
+  fecha_embalado_iso: string
+  qr_code: string
+}
 
 const props = defineProps<{ estadisticas: Estadisticas }>()
-
-const page = usePage()
-const flashMessage = computed(() => page.props.flash as any)
 
 const currentStep = ref(1)
 const numerosSerie = ref(['', '', '', ''])
 const selectedOperarioId = ref<number | null>(null)
 const nombreOperario = ref('')
+const operarioEmbalador = ref('')
 const productosValidados = ref<ProductoValidado[]>([])
 const operarios = ref<Operario[]>([])
 const cargando = ref(false)
+const cargandoImpresion = ref(false)
 const errorMsg = ref<string | null>(null)
-const primerInput = ref<HTMLInputElement | null>(null)
+const successMsg = ref<string | null>(null)
+const timeoutId = ref<number | null>(null)
+const productosAImprimir = ref<ProductoImprimir[]>([])
 
 // Estados para productos ya embalados
-const mostrarModalReimpresion = ref(false)
+const modalImpresion = ref(false)
 const productosYaEmbalados = ref<ProductoYaEmbalado[]>([])
 const productosValidosParaContinuar = ref<ProductoValidado[]>([])
 
@@ -64,97 +75,123 @@ const numerosSerieLlenos = computed(() => {
   return numerosSerie.value.filter(serie => serie.trim() !== '')
 })
 
+const productosValidosFinales = computed(() => {
+  return productosValidados.value.filter(p => p.valido)
+})
+
 const puedeValidar = computed(() => {
   return numerosSerieLlenos.value.length > 0 && numerosSerieLlenos.value.length <= 4 && !cargando.value
 })
 
-async function validarProductos() {
-  if (!puedeValidar.value) return
-  
-  cargando.value = true
-  errorMsg.value = null
-  
+const puedeGrabar = computed(() => {
+  return productosValidosFinales.value.length > 0 && !!selectedOperarioId.value && !cargando.value
+})
+
+function limpiarMensajeDespues(delay = 5000) {
+  if (timeoutId.value) {
+    clearTimeout(timeoutId.value)
+  }
+
+  timeoutId.value = setTimeout(() => {
+    errorMsg.value = null
+    successMsg.value = null
+    timeoutId.value = null
+  }, delay)
+}
+
+const enfocarPrimerInput = () => {
+  setTimeout(() => {
+    const input = document.querySelector('input[name="numero_serie_0"]') as HTMLInputElement
+    if (input) {
+      input.focus()
+    }
+  }, 200)
+}
+
+function manejarEnterEnSerie(index: number) {
+  const valorActual = numerosSerie.value[index].trim();
+
+  if (numerosSerie.value.some((num, i) => i !== index && num.trim() === valorActual)) {
+    errorMsg.value = `No se puede ingresar 2 veces el mismo número de serie.`;
+    limpiarMensajeDespues();
+    numerosSerie.value[index] = '';
+    const inputActual = document.querySelector(
+      `input[name="numero_serie_${index}"]`
+    ) as HTMLInputElement;
+    inputActual.focus();
+    return;
+  }
+  validarSerie(valorActual, index);
+}
+
+async function validarSerie(valorActual: string, index: number) {
+  if (!puedeValidar.value) return;
+
+  cargando.value = true;
+  errorMsg.value = null;
+
   try {
-    const { data } = await axios.post('/sectores/operarios/embalado/validar-productos', {
-      numeros_serie: numerosSerieLlenos.value
-    })
-    
+    const { data } = await axios.post('/sectores/operarios/embalado/validar-serie', {
+      serie: valorActual
+    });
+
     if (data.success) {
-      productosValidados.value = data.productos_validados || []
-      
-      // Verificar si hay productos ya embalados
-      if (data.tiene_productos_ya_embalados) {
-        mostrarModalReimpresion.value = true
-        productosYaEmbalados.value = data.productos_ya_embalados || []
-        productosValidosParaContinuar.value = data.productos_validos || []
+      productosValidados.value.push({
+        n_serie: valorActual,
+        valido: true,
+        producto: data.data as ControlStock
+      });
+
+      cargando.value = false;
+      await nextTick();
+
+      if (index < 3) {
+        const nextInput = document.querySelector(
+          `input[name="numero_serie_${index + 1}"]`
+        ) as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
       } else {
-        // Si no hay productos ya embalados, continuar al paso 2
-        continuarAOperario()
+        continuarAOperario();
       }
     } else {
-      errorMsg.value = data.message
+      errorMsg.value = data.message;
+      numerosSerie.value[index] = '';
+
+      cargando.value = false;
+      await nextTick();
+
+      const inputActual = document.querySelector(
+        `input[name="numero_serie_${index}"]`
+      ) as HTMLInputElement;
+      if (inputActual) inputActual.focus();
     }
   } catch (e: any) {
-    errorMsg.value = e?.response?.data?.message || 'Error al validar los productos.'
-  } finally {
-    cargando.value = false
+    errorMsg.value = e?.response?.data?.message || 'Error al validar los productos.';
+    limpiarMensajeDespues();
+
+    numerosSerie.value[index] = '';
+
+    cargando.value = false;
+    await nextTick();
+
+    const inputActual = document.querySelector(
+      `input[name="numero_serie_${index}"]`
+    ) as HTMLInputElement;
+    if (inputActual) inputActual.focus();
   }
 }
 
 async function cargarOperarios() {
   if (operarios.value.length > 0) return
-  
+
   try {
     const { data } = await axios.get('/sectores/operarios/embalado/operarios')
     operarios.value = Array.isArray(data?.operarios) ? data.operarios : []
   } catch (e: any) {
     console.error('Error al cargar operarios:', e)
   }
-}
-
-function continuarConEmbalados() {
-  mostrarModalReimpresion.value = false
-  
-  // Solo continuar con productos válidos (no embalados)
-  if (productosValidosParaContinuar.value.length > 0) {
-    continuarAOperario()
-  } else {
-    // Si no hay productos válidos para continuar, reiniciar
-    errorMsg.value = 'No hay productos válidos para embalar. Todos los productos ya fueron embalados.'
-    setTimeout(() => {
-      reiniciar()
-    }, 2000)
-  }
-}
-
-function imprimirEtiquetasYaEmbalados() {
-  // Obtener los IDs de los productos ya embalados
-  const productosIds = productosYaEmbalados.value
-    .map(p => {
-      // Buscar el producto validado correspondiente
-      const productoValidado = productosValidados.value.find(pv => pv.n_serie === p.n_serie)
-      return productoValidado?.producto?.id
-    })
-    .filter(id => id !== undefined)
-  
-  if (productosIds.length > 0) {
-    // Cerrar modal primero
-    mostrarModalReimpresion.value = false
-    
-    // Usar POST para enviar los IDs y redirigir a etiquetas
-    router.post('/sectores/operarios/embalado/reimprimir-etiqueta', {
-      control_stock_ids: productosIds
-    })
-  } else {
-    // Si no hay IDs válidos, mostrar error
-    errorMsg.value = 'No se pudieron obtener los IDs de los productos para reimprimir'
-  }
-}
-
-function cerrarModalReimpresion() {
-  mostrarModalReimpresion.value = false
-  // Limpiar datos y volver al estado inicial
-  reiniciar()
 }
 
 function continuarAOperario() {
@@ -166,76 +203,147 @@ function continuarAOperario() {
   })
 }
 
-// Auto-completar operario (simulando scanner)
-function buscarOperario() {
+function validarOperario() {
   const nombreBuscado = nombreOperario.value.trim().toLowerCase()
+
   if (nombreBuscado.length < 2) {
     selectedOperarioId.value = null
     return
   }
-  
-  const operarioEncontrado = operarios.value.find(op => 
-    op.nombre.toLowerCase().includes(nombreBuscado)
+
+  const operarioEncontrado = operarios.value.find(op =>
+    op.codigo_qr.toLowerCase().includes(nombreBuscado)
   )
-  
+
   if (operarioEncontrado) {
     selectedOperarioId.value = operarioEncontrado.id
-    nombreOperario.value = operarioEncontrado.nombre
+    operarioEmbalador.value = operarioEncontrado.nombre + ' ' + operarioEncontrado.apellido
+    nextTick(() => {
+      const operarioInput = document.querySelector('input[name="operario_nombre"]') as HTMLInputElement
+      if (operarioInput) operarioInput.blur()
+    })
   } else {
     selectedOperarioId.value = null
+    errorMsg.value = 'Operario con el codigo ' + nombreBuscado + ' no encontrado'
+    limpiarMensajeDespues()
+    nombreOperario.value = ''
+    nextTick(() => {
+      const operarioInput = document.querySelector('input[name="operario_nombre"]') as HTMLInputElement
+      if (operarioInput) operarioInput.focus()
+    })
   }
 }
 
-function puedeGrabar() {
-  return numerosSerieLlenos.value.length > 0 && !!selectedOperarioId.value && !cargando.value
-}
+async function grabar() {
+  if (!puedeGrabar.value) return
 
-function grabar() {
-  if (!puedeGrabar()) return
-  
   const datosEmbalado = {
-    numeros_serie: numerosSerieLlenos.value,
+    numeros_serie: productosValidosFinales.value.map(p => p.n_serie),
     operario_id: selectedOperarioId.value,
     continuar_con_embalados: false
   }
-  
-  router.post('/sectores/operarios/embalado', datosEmbalado, {
-    onStart: () => { 
-      cargando.value = true
-      errorMsg.value = null 
-    },
-    onSuccess: () => { 
-      // El controlador se encarga de la redirección a etiquetas
-      // No necesitamos hacer nada más aquí
-    },
-    onError: (errors) => { 
-      errorMsg.value = (errors as any)?.message || 'No se pudo procesar el embalado.' 
-    },
-    onFinish: () => { 
-      cargando.value = false 
-    }
-  })
+
+  cargando.value = true;
+  errorMsg.value = null;
+
+
+  try {
+    const response = await axios.post('/sectores/operarios/embalado', datosEmbalado);
+
+    console.log('Respuesta del servidor:', response.data);
+
+    abrirModalImpresion(response.data);
+  } catch (e: any) {
+    errorMsg.value = e?.response?.data?.message || 'No se pudo procesar el embalado.';
+    limpiarMensajeDespues();
+  } finally {
+    cargando.value = false;
+  }
+}
+
+
+function abrirModalImpresion(data: any) {
+  modalImpresion.value = true
+  productosAImprimir.value = data.productos || []
+}
+
+function generarQRDataURL(productoId: number): string {
+  return `/barcode/generate/${productoId}`
+}
+
+function imprimirEtiquetasYaEmbalados() {
+  cargandoImpresion.value = false;
+  errorMsg.value = null;
+  successMsg.value = null;
+
+  const productosIds = productosAImprimir.value
+    .map(p => {
+      const productoValidado = productosValidados.value.find(pv => pv.n_serie === p.n_serie)
+      return productoValidado?.producto?.id
+    })
+    .filter(id => id !== undefined)
+
+  if (productosIds.length > 0) {
+    
+
+    router.post('/sectores/operarios/embalado/imprimir-etiqueta',
+      {
+        control_stock_ids: productosIds
+      },
+      {
+        onStart: () => { cargandoImpresion.value = true; errorMsg.value = null; successMsg.value = null; },
+        onSuccess: (page: any) => {
+          successMsg.value = (page.props.flash as any)?.message || '';
+          reiniciar();
+        },
+        onError(errors) {
+          console.log('Errores de impresion:', errors);
+          cargandoImpresion.value = false;
+
+          if (errors.error) {
+            error(errors.error);
+          } else if (errors.message) {
+            error(errors.message);
+          } else {
+            const firstError = Object.values(errors)[0];
+            if (firstError) {
+              error(Array.isArray(firstError) ? firstError[0] : firstError);
+            } else {
+              error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
+            }
+          }
+        },
+        onFinish: () => { cargandoImpresion.value = false }
+      }
+    )
+  } else {
+    errorMsg.value = 'No se pudieron obtener los IDs de los productos para reimprimir'
+    limpiarMensajeDespues()
+  }
 }
 
 function reiniciar() {
+  if (timeoutId.value) {
+    clearTimeout(timeoutId.value)
+    timeoutId.value = null
+  }
+
   currentStep.value = 1
   numerosSerie.value = ['', '', '', '']
   selectedOperarioId.value = null
   nombreOperario.value = ''
+  operarioEmbalador.value = ''
   productosValidados.value = []
-  mostrarModalReimpresion.value = false
+  modalImpresion.value = false
   productosYaEmbalados.value = []
   productosValidosParaContinuar.value = []
   errorMsg.value = null
+  cargandoImpresion.value = false
+  limpiarMensajeDespues()
+
   nextTick(() => {
-    if (primerInput.value) primerInput.value.focus()
+    enfocarPrimerInput()
   })
-  
-  // Limpiar mensaje flash después de reiniciar
-  if (flashMessage.value?.message) {
-    // Recargar estadísticas sin recargar toda la página
-    router.reload({ only: ['estadisticas'] })
-  }
 }
 
 function volver() {
@@ -243,57 +351,55 @@ function volver() {
     currentStep.value = 1
     selectedOperarioId.value = null
     nombreOperario.value = ''
-    // No limpiar productosValidados para mantener el estado
-    mostrarModalReimpresion.value = false
+    operarioEmbalador.value = ''
+    modalImpresion.value = false
+    // Enfocar el primer input al volver
+    enfocarPrimerInput()
   }
   errorMsg.value = null
 }
 
-function manejarEnterEnSerie(index: number) {
-  if (index < 3 && numerosSerie.value[index].trim() !== '') {
-    // Mover al siguiente input
-    const nextInput = document.querySelector(`input[name="numero_serie_${index + 1}"]`) as HTMLInputElement
-    if (nextInput) nextInput.focus()
-  } else {
-    // Si es el último input o no hay más inputs, validar
-    validarProductos()
-  }
-}
 
-// Auto focus en el primer input
-nextTick(() => {
-  if (primerInput.value) primerInput.value.focus()
+onMounted(() => {
+  cargarOperarios()
+  enfocarPrimerInput()
 })
 
-// Cargar operarios al inicio
-cargarOperarios()
+watch(currentStep, (newStep) => {
+  if (newStep === 1) {
+    enfocarPrimerInput()
+  }
+})
 </script>
 
 <template>
+
   <Head title="Embalado" />
   <div class="min-h-screen transition-colors duration-200" :class="pageBgClass">
     <div class="max-w-4xl mx-auto px-4 py-6 md:py-10">
+
       <!-- Header responsive -->
       <div class="mb-6 md:mb-8">
+
         <!-- Móvil: título centrado arriba, pasos abajo -->
         <div class="block md:hidden text-center">
           <h1 class="text-lg font-semibold text-gray-800 mb-4">Embalado</h1>
           <div class="flex items-center justify-center space-x-4">
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(1)">1</div>
+              :class="stepCircleClass(1)">1</div>
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(2)">2</div>
+              :class="stepCircleClass(2)">2</div>
           </div>
         </div>
-        
+
         <!-- Desktop: layout original con grid -->
         <div class="hidden md:grid grid-cols-3 items-center">
           <h1 class="text-lg font-semibold text-gray-800 justify-self-start">Embalado</h1>
           <div class="justify-self-center flex items-center space-x-4">
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(1)">1</div>
+              :class="stepCircleClass(1)">1</div>
             <div class="flex items-center justify-center w-9 h-9 rounded-full text-sm font-semibold"
-                 :class="stepCircleClass(2)">2</div>
+              :class="stepCircleClass(2)">2</div>
           </div>
           <div></div>
         </div>
@@ -302,183 +408,110 @@ cargarOperarios()
       <div class="grid lg:grid-cols-2 gap-6">
         <!-- Main Card -->
         <div class="bg-white rounded-2xl shadow-lg p-4 md:p-6 lg:p-8">
-          
-          <!-- Mensaje flash (éxito/error global) -->
-          <div v-if="flashMessage?.message" 
-               class="mb-6 p-3 rounded-lg text-sm"
-               :class="flashMessage.success 
-                 ? 'bg-green-50 text-green-700 border border-green-200' 
-                 : 'bg-red-50 text-red-700 border border-red-200'">
-            {{ flashMessage.message }}
-          </div>
-
-          <!-- Modal emergente de productos ya embalados -->
-          <div v-if="mostrarModalReimpresion" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-medium text-gray-900">Productos ya embalados</h3>
-                <button @click="cerrarModalReimpresion" class="text-gray-400 hover:text-gray-600">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </button>
-              </div>
-              
-              <div class="text-sm text-gray-600 mb-4">
-                Los siguientes productos ya fueron embalados:
-              </div>
-              
-              <div class="space-y-2 mb-6">
-                <div v-for="producto in productosYaEmbalados" :key="producto.n_serie"
-                     class="text-sm bg-yellow-50 p-3 rounded border-l-4 border-yellow-400">
-                  <div class="font-medium text-gray-900">{{ producto.n_serie }}</div>
-                  <div class="text-gray-600">Embalado el {{ producto.fecha_embalado }} por {{ producto.operario }}</div>
-                </div>
-              </div>
-              
-              <div v-if="productosValidosParaContinuar.length > 0" class="text-center mb-4 text-sm text-gray-700">
-                ¿Desea continuar con los productos válidos restantes?
-              </div>
-              <div v-else class="text-center mb-4 text-sm text-red-600">
-                Todos los productos ya fueron embalados.
-              </div>
-              
-              <div class="flex space-x-2">
-                <button
-                  @click="cerrarModalReimpresion"
-                  class="flex-1 px-3 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition text-sm font-medium"
-                >
-                  Cancelar
-                </button>
-                
-                <button
-                  v-if="productosValidosParaContinuar.length > 0"
-                  @click="continuarConEmbalados"
-                  class="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm font-medium"
-                >
-                  Continuar
-                </button>
-                
-                <button
-                  @click="imprimirEtiquetasYaEmbalados"
-                  class="flex-1 px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition text-sm font-medium"
-                >
-                  Reimprimir
-                </button>
-              </div>
-            </div>
-          </div>
 
           <!-- STEP 1: Números de Serie -->
           <div v-if="currentStep === 1">
-            <div class="mb-6">
+            <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 mb-3">N° de serie (máximo 4)</label>
               <div class="space-y-3">
-                <input
-                  v-for="(serie, index) in numerosSerie"
-                  :key="index"
-                  :ref="index === 0 ? 'primerInput' : undefined"
-                  v-model="numerosSerie[index]"
-                  :name="`numero_serie_${index}`"
-                  type="text"
-                  :placeholder="`N° de serie ${index + 1}`"
-                  class="w-full rounded-xl border border-gray-300 px-3 py-2.5
+                <input v-for="(serie, index) in numerosSerie" :key="index" v-model="numerosSerie[index]"
+                  :name="`numero_serie_${index}`" type="text" :placeholder="`N° de serie ${index + 1}`" class="w-full rounded-xl border border-gray-300 px-3 py-2.5
                          focus:border-sky-800 focus:ring-2 focus:ring-sky-200
-                         transition text-sm md:text-base"
-                  @keyup.enter="manejarEnterEnSerie(index)"
-                  :disabled="cargando"
-                />
+                         transition text-sm md:text-base" @keyup.enter="manejarEnterEnSerie(index)"
+                  :disabled="cargando" />
               </div>
             </div>
 
             <!-- Productos validados preview -->
-            <div v-if="productosValidados.length > 0" class="mb-4">
+            <div v-if="productosValidados.length > 0" class="mb-2">
               <div class="text-sm text-gray-600 mb-2">Productos encontrados:</div>
               <div class="space-y-1">
-                <div v-for="producto in productosValidados" :key="producto.n_serie"
-                     class="text-xs p-2 rounded"
-                     :class="producto.valido ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'">
+                <div v-for="producto in productosValidados" :key="producto.n_serie" class="p-2 rounded"
+                  :class="producto.valido ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'">
                   <strong>{{ producto.n_serie }}</strong>
-                  <span v-if="producto.producto"> - {{ producto.producto.modelo.nombre_modelo || producto.producto.modelo.modelo }}</span>
+                  <span v-if="producto.producto"> - {{ producto.producto.modelo.nombre_modelo ||
+                    producto.producto.modelo.modelo }}</span>
                   <span v-if="!producto.valido"> - {{ producto.mensaje }}</span>
                 </div>
               </div>
             </div>
 
-            <!-- Error de validación -->
-            <div v-if="errorMsg"
-                 class="mb-5 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+            <!-- Error de validación (específico del paso) -->
+            <div v-if="errorMsg" class="p-3 mb-2 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
               {{ errorMsg }}
             </div>
 
-            <!-- CTA -->
+            <!-- Error de validación (específico del paso) -->
+            <div v-if="successMsg"
+              class="p-3 mb-2 rounded-lg bg-green-50 text-green-700 border border-green-200 text-sm">
+              {{ successMsg }}
+            </div>
+
+            <!-- boton continuar -->
             <div class="text-center">
               <button
-                class="w-full max-w-80 h-10 rounded-[20px] bg-sky-800 text-white font-medium
+                class="w-full h-10 rounded-[20px] bg-sky-800 text-white font-medium
                        hover:bg-sky-900 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm md:text-base"
-                :disabled="!puedeValidar"
-                @click="validarProductos"
-              >
-                {{ cargando ? 'Validando...' : 'Validar productos' }}
+                :disabled="!puedeValidar" @click="continuarAOperario">
+                Continuar
               </button>
             </div>
+
           </div>
 
           <!-- STEP 2: Operario -->
           <div v-else-if="currentStep === 2">
             <div class="mb-6">
               <div class="mb-4">
-                <p class="text-sm text-gray-600">Productos a embalar:</p>
+                <p class="text-gray-600">Modelos a embalar:</p>
                 <div class="space-y-1">
-                  <div v-for="producto in productosValidados.filter(p => p.valido)" :key="producto.n_serie"
-                       class="text-sm bg-gray-50 p-2 rounded">
+                  <div v-for="producto in productosValidosFinales" :key="producto.n_serie"
+                    class="bg-gray-50 p-2 rounded">
                     <strong>{{ producto.n_serie }}</strong>
-                    <span v-if="producto.producto"> - {{ producto.producto.modelo.nombre_modelo || producto.producto.modelo.modelo }}</span>
+                    <span v-if="producto.producto"> - {{ producto.producto.modelo.nombre_modelo ||
+                      producto.producto.modelo.modelo }}</span>
                   </div>
                 </div>
               </div>
-              
-              <label class="block text-sm font-medium text-gray-700 mb-2">Operario (escanear o escribir)</label>
-              <input
-                v-model="nombreOperario"
-                name="operario_nombre"
-                type="text"
-                placeholder="Escanee o escriba el nombre del operario"
-                class="w-full rounded-xl border border-gray-300 px-3 py-2.5
-                       focus:border-sky-800 focus:ring-2 focus:ring-sky-200
-                       transition text-sm md:text-base"
-                @input="buscarOperario"
-                @keyup.enter="grabar"
-              />
-              
+
+              <label class="block font-medium text-gray-700 mb-2">Operario</label>
+              <div class="relative">
+                <input v-model="nombreOperario" name="operario_nombre" type="text"
+                  placeholder="Escanee o escriba el nombre del operario" class="w-full rounded-xl border border-gray-300 px-3 py-2.5
+                         focus:border-sky-800 focus:ring-2 focus:ring-sky-200
+                         transition text-sm md:text-base" @keyup.enter="validarOperario" :disabled="cargando" />
+
+                <div v-if="cargando" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-sky-800"></div>
+                </div>
+              </div>
+
               <!-- Operario seleccionado -->
               <div v-if="selectedOperarioId" class="mt-2 text-sm text-green-600">
-                ✓ Operario seleccionado: {{ nombreOperario }}
+                ✓ Operario seleccionado: {{ operarioEmbalador }}
               </div>
             </div>
 
             <!-- Error de validación -->
-            <div v-if="errorMsg"
-                 class="mb-5 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+            <div v-if="errorMsg" class="mb-5 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
               {{ errorMsg }}
             </div>
 
+            <div v-if="cargando" class="text-center text-sm text-gray-600 mt-4">
+              Procesando embalado...
+            </div>
+
             <div class="flex flex-col space-y-4 md:space-y-0 md:flex-row md:justify-center md:gap-4">
-              <button
-                class="w-full md:w-40 h-10 rounded-[20px] bg-transparent text-sky-800 font-medium
-                       border border-sky-800 hover:bg-sky-50 transition text-sm md:text-base"
-                @click="volver"
-                :disabled="cargando"
-              >
+              <button class="w-full md:w-40 h-10 rounded-[20px] bg-transparent text-sky-800 font-medium
+                       border border-sky-800 hover:bg-sky-50 transition text-sm md:text-base" @click="volver"
+                :disabled="cargando">
                 Volver
               </button>
 
               <button
                 class="w-full md:w-40 h-10 rounded-[20px] bg-sky-800 text-white font-medium
-                       hover:bg-sky-900 disabled:opacity-50 transition text-sm md:text-base"
-                :disabled="!puedeGrabar()"
-                @click="grabar"
-              >
+                       hover:bg-sky-900 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm md:text-base"
+                :disabled="!puedeGrabar" @click="grabar">
                 {{ cargando ? 'Procesando...' : 'Embalar' }}
               </button>
             </div>
@@ -488,23 +521,21 @@ cargarOperarios()
         <!-- Panel de estadísticas (fijo) -->
         <div class="bg-white rounded-2xl shadow-lg p-4 md:p-6">
           <h3 class="text-base font-semibold text-gray-800 mb-4">Embalados de hoy</h3>
-          
+
           <!-- Tabla de operarios -->
           <div class="space-y-2 mb-4">
-            <div class="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-600">
+            <div
+              class="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg text-sm font-medium text-gray-600">
               <span>OPERARIO</span>
               <span>CANTIDAD</span>
             </div>
-            
-            <div v-if="props.estadisticas.operarios.length === 0" 
-                 class="text-center py-8 text-gray-500 text-sm">
+
+            <div v-if="props.estadisticas.operarios.length === 0" class="text-center py-8 text-gray-500 text-sm">
               No hay embalados registrados hoy
             </div>
-            
-            <div v-else
-                 v-for="operario in props.estadisticas.operarios" 
-                 :key="operario.operario"
-                 class="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg text-sm">
+
+            <div v-else v-for="operario in props.estadisticas.operarios" :key="operario.operario"
+              class="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg text-sm">
               <span class="text-gray-700">{{ operario.operario }}</span>
               <span class="font-semibold text-gray-900">{{ operario.cantidad_embalados }}</span>
             </div>
@@ -518,11 +549,105 @@ cargarOperarios()
             </div>
           </div>
         </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal emergente de productos ya embalados -->
+  <div v-if="modalImpresion" class="fixed inset-0 flex items-center justify-center h-full w-full">
+    <div class="fixed inset-0 bg-black opacity-50 z-1"></div>
+    <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full py-3 z-50 max-h-[90vh] relative">
+      <div v-if="cargandoImpresion" class="absolute inset-0 bg-gray-200 opacity-70 z-50 ">
+      </div>
+      <div v-if="cargandoImpresion" class="absolute flex h-full w-full items-center justify-center pb-10 z-50">
+        <div class="flex flex-col gap-10 items-center justify-center h-90 w-80 bg-white rounded-2xl">
+          <div class="animate-spin rounded-full h-30 w-30 border-b-2 border-sky-800"></div>
+          <p class="flex items-center gap-1">
+            Imprimiendo
+            <span class="dot animate-bounce">.</span>
+            <span class="dot animate-bounce delay-200">.</span>
+            <span class="dot animate-bounce delay-400">.</span>
+          </p>
+
+        </div>
+      </div>
+      <h2 class="text-lg font-bold text-gray-800 border-b border-gray-200 px-6 h-9">Productos a imprimir</h2>
+      <div class="py-4 space-y-4 overflow-y-auto max-h-[70vh] px-6">
+        <div v-for="(producto, index) in productosAImprimir" :key="producto.id"
+          class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm text-black">
+          <!-- Header de la tarjeta con título y botón -->
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-gray-700">Datos generales - Etiqueta {{ index + 1 }}</h3>
+          </div>
+
+          <!-- Campos en grid de 3 columnas -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <!-- Ingreso a depósito -->
+            <div>
+              <label class="block text-gray-500 mb-2">Ingreso a depósito</label>
+              <div class="relative">
+                <div class="flex items-center text-center border border-gray-300 rounded px-3 py-2 h-10.5">
+                  <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                  </svg>
+                  <span class="text-sm text-gray-900 mt-0.5">{{ producto.fecha_embalado }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- N° de serie -->
+            <div>
+              <label class="block text-gray-500 mb-2">N° de serie</label>
+              <div class="border border-gray-300 rounded bg-white px-3 py-2">
+                <span class="text-sm font-medium text-gray-900">{{ producto.n_serie }}</span>
+              </div>
+            </div>
+
+            <!-- Modelo -->
+            <div>
+              <label class="block text-gray-500 mb-2">Modelo</label>
+              <div class="border border-gray-300 rounded bg-white px-3 py-2">
+                <span class="text-sm text-gray-900">{{ producto.modelo.modelo_nombre }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Código de barras -->
+          <div class="bg-gray-50 rounded-lg p-4 flex justify-center">
+            <div>
+              <img :src="generarQRDataURL(producto.id)" :alt="`Código de barras ${producto.n_serie}`"
+                class="h-16 w-auto mx-auto block mb-2" />
+              <div class="text-center text-xs font-medium text-gray-700 tracking-wide">
+                {{ producto.n_serie }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 flex justify-end border-t gap-2 border-gray-200">
+        <button class="mt-4 bg-[#0D509C] text-white rounded-lg px-4 py-2"
+          @click="imprimirEtiquetasYaEmbalados">Imprimir</button>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-select::-ms-expand { display: none; }
+select::-ms-expand {
+  display: none;
+}
+
+.dot {
+  display: inline-block;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+.delay-400 {
+  animation-delay: 0.4s;
+}
 </style>

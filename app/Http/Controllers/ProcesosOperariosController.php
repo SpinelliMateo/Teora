@@ -76,16 +76,12 @@ class ProcesosOperariosController extends Controller
         $validate = $request->validate([
             'id' => 'required',
             'fecha_prearmado' => 'nullable|string',
-            'hora_prearmado' => 'nullable|string',
             'operario_prearmado' => 'nullable|integer|exists:operarios,id',
             'fecha_inyectado' => 'nullable|string',
-            'hora_inyectado' => 'nullable|string',
             'fecha_armado' => 'nullable|string',
-            'hora_armado' => 'nullable|string',
             'operario_armado' => 'nullable|integer|exists:operarios,id',
             'numero_motor' => 'nullable|string|max:50',
             'fecha_embalado' => 'nullable|string',
-            'hora_embalado' => 'nullable|string',
             'operario_embalado' => 'nullable|integer|exists:operarios,id',
         ]);
         // Validar jerarquía
@@ -120,12 +116,13 @@ class ProcesosOperariosController extends Controller
             $control_stock = ControlStock::findOrFail($request->id);
 
             $control_stock->update([
-                'fecha_prearmado' => $this->combineDateTime($request->fecha_prearmado, $request->hora_prearmado),
-                'fecha_inyectado' => $this->combineDateTime($request->fecha_inyectado, $request->hora_inyectado),
-                'fecha_armado' => $this->combineDateTime($request->fecha_armado, $request->hora_armado),
-                'fecha_embalado' => $this->combineDateTime($request->fecha_embalado, $request->hora_embalado),
+                'fecha_prearmado' => $request->fecha_prearmado,
+                'fecha_inyectado' => $request->fecha_inyectado,
+                'fecha_armado' => $request->fecha_armado,
+                'fecha_embalado' => $request->fecha_embalado,
                 'equipo' => $request->numero_motor,
             ]);
+            
             // Actualizar operarios (incluyendo el caso de borrar/setear a null)
             if($request->has('operario_prearmado') || $request->has('operario_armado') || $request->has('operario_embalado')){
                 $proceso = ProcesosOperarios::where('control_stock_id', $control_stock->id)->first();
@@ -150,16 +147,5 @@ class ProcesosOperariosController extends Controller
                 'message' => 'Ocurrio un error.'
             ]);
         }
-    }
-
-    private function combineDateTime($date, $time)
-    {
-        if ($date && $time) {
-            return "$date $time:00"; // ejemplo: "2025-06-24 14:30:00"
-        } elseif ($date) {
-            return "$date 00:00:00"; // solo fecha, sin hora
-        }
-
-        return null; // ninguno presente
     }
 }
