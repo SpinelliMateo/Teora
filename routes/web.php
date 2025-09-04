@@ -158,7 +158,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
        Route::delete('operarios/{operario}', [OperarioController::class, 'destroy'])->name('operarios.destroy');
        Route::get('/operarios/barcode/{operario}', [OperarioController::class, 'generarCodigoBarras'])->name('operarios.barcode');
        Route::post('/operarios/{operario}/imprimir', [OperarioController::class, 'imprimirEtiqueta'])->name('operarios.imprimir');
-   
+
+       // Modelos
        Route::get('modelos', [ModeloController::class, 'index'])->name('modelos');
        Route::get('modelos/create', [ModeloController::class, 'create'])->name('modelos.create');
        Route::post('modelos', [ModeloController::class, 'store'])->name('modelos.store');

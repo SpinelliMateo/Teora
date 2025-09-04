@@ -23,96 +23,58 @@ class EmbaladoService
         $this->operarioRepository = $operarioRepository;
     }
 
-    public function validarProductosParaEmbalado(array $numerosSerie): array
+    public function validarSerieParaEmbalado(string $numeroSerie): array
     {
-        $resultados = [];
-        $productosValidos = [];
-        $productosYaEmbalados = [];
-        $productosNoEncontrados = [];
-        $productosInvalidos = [];
+        $controlStock = $this->controlStockRepository->findByNumeroSerie($numeroSerie);
 
-        foreach ($numerosSerie as $numeroSerie) {
-            if (empty(trim($numeroSerie))) {
-                continue;
-            }
-
-            $controlStock = $this->controlStockRepository->findByNumeroSerie($numeroSerie);
-
-            if (!$controlStock) {
-                $productosNoEncontrados[] = $numeroSerie;
-                continue;
-            }
-
-            // Verificar si ya fue embalado
-            if (!is_null($controlStock->fecha_embalado)) {
-                $productosYaEmbalados[] = [
-                    'numero_serie' => $numeroSerie,
-                    'producto' => $controlStock->load('modelo'),
-                    'fecha_embalado' => $controlStock->fecha_embalado
-                ];
-                continue;
-            }
-
-            // Verificar si está válido para embalado (debe estar armado)
-            if (!$this->isValidForEmbalado($controlStock)) {
-                $productosInvalidos[] = $numeroSerie;
-                continue;
-            }
-
-            $productosValidos[] = $controlStock->load('modelo');
-        }
-
-        $success = count($productosNoEncontrados) === 0 && count($productosInvalidos) === 0;
-
-        return [
-            'success' => $success,
-            'productos_validos' => $productosValidos,
-            'productos_ya_embalados' => $productosYaEmbalados,
-            'productos_no_encontrados' => $productosNoEncontrados,
-            'productos_invalidos' => $productosInvalidos,
-            'tiene_productos_ya_embalados' => count($productosYaEmbalados) > 0
-        ];
-    }
-
-    public function procesarEmbalado(array $numerosSerie, int $operarioId): array
-    {
-        // Primero validar todos los productos
-        $validacion = $this->validarProductosParaEmbalado($numerosSerie);
-
-        if (!$validacion['success']) {
-            $mensajes = [];
-            
-            if (count($validacion['productos_no_encontrados']) > 0) {
-                $mensajes[] = '❌ No se encontraron los siguientes números de serie: ' . implode(', ', $validacion['productos_no_encontrados']);
-            }
-            
-            if (count($validacion['productos_invalidos']) > 0) {
-                $mensajes[] = '⚠️ Los siguientes productos no están en condiciones para ser embalados: ' . implode(', ', $validacion['productos_invalidos']);
-            }
-
+        if (!$controlStock) {
             return [
                 'success' => false,
-                'message' => implode(' ', $mensajes),
-                'data' => $validacion
+                'message' => 'No se encontró el modelo con el número de serie: ' . $numeroSerie
             ];
         }
 
-        // Procesar embalado de productos válidos
+        if (!is_null($controlStock->fecha_embalado)) {
+            return [
+                'success' => false,
+                'message' => 'El modelo con el número de serie ' . $numeroSerie . ' ya fue embalado.'
+            ];
+        }
+
+        if (!$this->isValidForEmbalado($controlStock)) {
+            return [
+                'success' => false,
+                'message' => 'El modelo con el número de serie ' . $numeroSerie . ' no está en condiciones para ser embalado.'
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'El número de serie ' . $numeroSerie . ' con el modelo ' . $controlStock->modelo->nombre_modelo . ' es válido para ser embalado.',
+            'data' => $controlStock 
+        ];
+    }
+
+
+    public function procesarEmbalado(array $numerosSerie, int $operarioId)
+    {
+
         $productosEmbalados = [];
-        $ordenesCompletadas = []; // Para rastrear qué órdenes se completaron
-        
-        DB::transaction(function () use ($validacion, $operarioId, &$productosEmbalados, &$ordenesCompletadas) {
-            foreach ($validacion['productos_validos'] as $controlStock) {
+
+        DB::transaction(function () use ($numerosSerie, $operarioId, &$productosEmbalados) {
+            foreach ($numerosSerie as $serie) {
+                $validacion = $this->validarSerieParaEmbalado($serie);
+                if (!$validacion['success']) {
+                    continue;
+                }
+
+                $controlStock = $validacion['data'];
                 // Marcar como embalado
                 $this->marcarComoEmbalado($controlStock, $operarioId);
                 $productosEmbalados[] = $controlStock;
                 
-                // Verificar si la orden de fabricación está completa
                 if ($controlStock->orden_fabricacion_id) {
-                    $ordenCompletada = $this->verificarYCompletarOrden($controlStock->orden_fabricacion_id);
-                    if ($ordenCompletada) {
-                        $ordenesCompletadas[] = $ordenCompletada;
-                    }
+                    $this->verificarYCompletarOrden($controlStock->orden_fabricacion_id);
                 }
             }
         });
@@ -122,22 +84,12 @@ class EmbaladoService
             ? "✅ 1 producto embalado exitosamente."
             : "✅ {$cantidadEmbalados} productos embalados exitosamente.";
 
-        // Agregar información sobre órdenes completadas
-        if (count($ordenesCompletadas) > 0) {
-            $ordenesInfo = collect($ordenesCompletadas)->map(function($orden) {
-                return "Orden {$orden->no_orden}";
-            })->implode(', ');
-            
-            $message .= " 🎉 Se completaron las siguientes órdenes de fabricación: {$ordenesInfo}";
-        }
 
         return [
             'success' => true,
             'message' => $message,
             'data' => [
-                'productos_embalados' => $productosEmbalados,
-                'productos_ya_embalados' => $validacion['productos_ya_embalados'],
-                'ordenes_completadas' => $ordenesCompletadas
+                'productos_embalados' => $productosEmbalados
             ]
         ];
     }
@@ -194,9 +146,6 @@ class EmbaladoService
             });
     }
 
-    /**
-     * Verificar si una orden de fabricación está completada y marcarla como tal
-     */
     private function verificarYCompletarOrden(int $ordenFabricacionId): ?OrdenFabricacion
     {
         $orden = OrdenFabricacion::find($ordenFabricacionId);
@@ -205,18 +154,14 @@ class EmbaladoService
             return null; // La orden no existe o ya está completada
         }
 
-        // Verificar si todos los productos de la orden están embalados
-        $todosEmbalados = $orden->controlStock()
-            ->whereNull('fecha_embalado')
-            ->doesntExist(); // Si no existen productos sin embalar, entonces todos están embalados
+        $todosEmbalados = $orden->controlStock()->whereNotNull('fecha_embalado')->get();
 
-        if ($todosEmbalados) {
+        if ($todosEmbalados->isEmpty()) {
             $orden->update([
                 'estado' => 'completada',
                 'fecha_finalizacion' => Carbon::now()
-            ]);
-            
-            return $orden->fresh(); // Retornar la orden actualizada
+            ]); 
+            return $orden;
         }
 
         return null;
@@ -230,12 +175,10 @@ class EmbaladoService
 
     private function marcarComoEmbalado(ControlStock $controlStock, int $operarioId): void
     {
-        // Actualizar control_stock
         $controlStock->update([
             'fecha_embalado' => Carbon::now()
         ]);
 
-        // Crear o actualizar registro en procesos_operarios
         $procesoExistente = DB::table('procesos_operarios')
             ->where('control_stock_id', $controlStock->id)
             ->first();

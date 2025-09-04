@@ -239,7 +239,7 @@ class OperarioController extends Controller
 
             // Construir el ZPL con datos reales
             $zpl = $this->construirTemplateZPL($operario);
-
+            
             // Enviar directamente a la impresora HPRT
             $resultado = $this->enviarAImpresoraHPRT($zpl);
 

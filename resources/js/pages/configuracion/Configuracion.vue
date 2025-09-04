@@ -53,24 +53,26 @@ const props = defineProps({
 
                     <span class="text-black text-[16px] font-medium">Sectores/Procesos</span>
                 </div>
-                <Link :href="route('modelos')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
-                    <svg class="w-5 h-5 mr-3 flex-shrink-0" width="23" height="15" viewBox="0 0 23 15" fill="none"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" clip-rule="evenodd"
-                            d="M-1.90735e-06 15L-5.96007e-07 -1.03375e-07L17.5238 1.4286e-06L23 7.50003L17.5238 15L-1.90735e-06 15ZM4.38093 6.42856L12.0476 6.42856L12.0476 4.28574L4.38093 4.28574L4.38093 6.42856ZM16.9762 9.10717C17.8835 9.10717 18.6191 8.38762 18.6191 7.50003C18.6191 6.61243 17.8835 5.89288 16.9762 5.89288C16.0689 5.89288 15.3333 6.61243 15.3333 7.50003C15.3333 8.38762 16.0689 9.10717 16.9762 9.10717ZM4.38093 10.7143L12.0476 10.7143L12.0476 8.57144L4.38093 8.57144L4.38093 10.7143Z"
-                            fill="#0D509C" />
-                    </svg>
-                    <span class="text-black text-[16px] font-medium">Modelos</span>
+                <Link :href="route('modelos')"
+                    class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" width="23" height="15" viewBox="0 0 23 15" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd"
+                        d="M-1.90735e-06 15L-5.96007e-07 -1.03375e-07L17.5238 1.4286e-06L23 7.50003L17.5238 15L-1.90735e-06 15ZM4.38093 6.42856L12.0476 6.42856L12.0476 4.28574L4.38093 4.28574L4.38093 6.42856ZM16.9762 9.10717C17.8835 9.10717 18.6191 8.38762 18.6191 7.50003C18.6191 6.61243 17.8835 5.89288 16.9762 5.89288C16.0689 5.89288 15.3333 6.61243 15.3333 7.50003C15.3333 8.38762 16.0689 9.10717 16.9762 9.10717ZM4.38093 10.7143L12.0476 10.7143L12.0476 8.57144L4.38093 8.57144L4.38093 10.7143Z"
+                        fill="#0D509C" />
+                </svg>
+                <span class="text-black text-[16px] font-medium">Modelos</span>
                 </Link>
-                <Link :href="route('operarios')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
-                    <svg class="w-5 h-5 mr-3 flex-shrink-0" width="16" height="19" viewBox="0 0 16 19" fill="none"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path
-                            d="M8 13C3.58 13 0 14.79 0 17V19H16V17C16 14.79 12.42 13 8 13ZM4 7C4 8.06087 4.42143 9.07828 5.17157 9.82843C5.92172 10.5786 6.93913 11 8 11C9.06087 11 10.0783 10.5786 10.8284 9.82843C11.5786 9.07828 12 8.06087 12 7M7.5 0C7.2 0 7 0.21 7 0.5V3.5H6V1C6 1 3.75 1.86 3.75 4.75C3.75 4.75 3 4.89 3 6H13C12.95 4.89 12.25 4.75 12.25 4.75C12.25 1.86 10 1 10 1V3.5H9V0.5C9 0.21 8.81 0 8.5 0H7.5Z"
-                            fill="#0D509C" />
-                    </svg>
+                <Link :href="route('operarios')"
+                    class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
+                <svg class="w-5 h-5 mr-3 flex-shrink-0" width="16" height="19" viewBox="0 0 16 19" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M8 13C3.58 13 0 14.79 0 17V19H16V17C16 14.79 12.42 13 8 13ZM4 7C4 8.06087 4.42143 9.07828 5.17157 9.82843C5.92172 10.5786 6.93913 11 8 11C9.06087 11 10.0783 10.5786 10.8284 9.82843C11.5786 9.07828 12 8.06087 12 7M7.5 0C7.2 0 7 0.21 7 0.5V3.5H6V1C6 1 3.75 1.86 3.75 4.75C3.75 4.75 3 4.89 3 6H13C12.95 4.89 12.25 4.75 12.25 4.75C12.25 1.86 10 1 10 1V3.5H9V0.5C9 0.21 8.81 0 8.5 0H7.5Z"
+                        fill="#0D509C" />
+                </svg>
 
-                    <span class="text-black text-[16px] font-medium">Operarios</span>
+                <span class="text-black text-[16px] font-medium">Operarios</span>
                 </Link>
                 <Link :href="route('stock_minimo')"
                     class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
@@ -83,14 +85,15 @@ const props = defineProps({
                 </svg>
                 <span class="text-black text-[16px] font-medium">Stock Mínimo</span>
                 </Link>
-                
-                <Link :href="route('sector-accesos.index')" class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
-                    <svg class="w-5 h-5 mr-3 flex-shrink-0" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 1C8.61553 1 7.26216 1.41054 6.11101 2.17971C4.95987 2.94888 4.06266 4.04213 3.53285 5.32122C3.00303 6.6003 2.86441 8.00776 3.13451 9.36563C3.4046 10.7235 4.07129 11.9708 5.05026 12.9497C6.02922 13.9287 7.2765 14.5954 8.63437 14.8655C9.99224 15.1356 11.3997 14.997 12.6788 14.4672C13.9579 13.9373 15.0511 13.0401 15.8203 11.889C16.5895 10.7378 17 9.38447 17 8C17 6.14348 16.2625 4.36301 14.9497 3.05025C13.637 1.7375 11.8565 1 10 1ZM10 13C9.40666 13 8.82664 12.8241 8.33329 12.4944C7.83994 12.1648 7.45542 11.6962 7.22836 11.1481C7.0013 10.5999 6.94189 9.99667 7.05765 9.41473C7.1734 8.83279 7.45912 8.29824 7.87868 7.87868C8.29824 7.45912 8.83279 7.1734 9.41473 7.05765C9.99667 6.94189 10.5999 7.0013 11.1481 7.22836C11.6962 7.45542 12.1648 7.83994 12.4944 8.33329C12.8241 8.82664 13 9.40666 13 10C13 10.7956 12.684 11.5587 12.1213 12.1213C11.5587 12.684 10.7956 13 10 13Z" 
-                              fill="#0D509C" stroke="#0D509C" stroke-width="0.5"/>
-                        <path d="M14 6L18 10L14 14M6 8H18" stroke="#0D509C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="text-black text-[16px] font-medium">Códigos de Sectores</span>
+
+                <Link :href="route('sector-accesos.index')"
+                    class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
+                <svg class="w-6 h-6 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 24 24">
+                    <path fill="#0D509C" fill-rule="evenodd"
+                        d="M1.25 12a5.75 5.75 0 0 1 10.8-2.75H21c.966 0 1.75.784 1.75 1.75v2.5a.75.75 0 0 1-.75.75h-2.25V16a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1-.75-.75v-1.75h-3.457A5.751 5.751 0 0 1 1.25 12M7 10a2 2 0 1 0 0 4a2 2 0 0 0 0-4"
+                        clip-rule="evenodd" />
+                </svg>
+                <span class="text-black text-[16px] font-medium">Códigos de Sectores</span>
                 </Link>
                 <Link :href="route('problemas')"
                     class="flex items-center bg-white rounded-lg shadow-lg p-5 h-[52px] cursor-pointer">
