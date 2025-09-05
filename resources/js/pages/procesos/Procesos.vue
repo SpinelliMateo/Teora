@@ -13,7 +13,9 @@ const props = defineProps({
     procesos: Array,
     filtro: String,
     search: String,
-    operarios: Array,
+    prearmadores: Array,
+    armadores: Array,
+    embaladores: Array,
     can: Object
 })
 
@@ -21,37 +23,92 @@ const form = useForm({
     id: '',
     fecha_prearmado: '',
     hora_prearmado: '',
-    operario_prearmado: '',
+    operario_prearmado: null,
     fecha_inyectado: '',
     hora_inyectado: '',
     fecha_armado: '',
     hora_armado: '',
-    operario_armado: '',
+    operario_armado: null,
     numero_motor: '',
     fecha_embalado: '',
     hora_embalado: '',
-    operario_embalado: '',
+    operario_embalado: null,
 });
 
+type SerieSeleccionada = {
+    control_stock: {
+        id: number;
+        n_serie: string;
+        modelo: {
+            modelo: string;
+            nombre_modelo: string;
+        };
+        fecha_prearmado?: string;
+        fecha_inyectado?: string;
+        fecha_armado?: string;
+        fecha_embalado?: string;
+        fecha_salida?: string;
+        equipo?: string;
+    };
+    operario_prearmador?: { id: number; nombre: string; apellido: string };
+    operario_armador?: { id: number; nombre: string; apellido: string };
+    operario_embalador?: { id: number; nombre: string; apellido: string };
+};
+
+const modalImpresion = ref(false);
+const cargandoImpresion = ref(false);
 const loading_proceso = ref(false);
 const proceso_modal = ref(false);
-const serie_seleccionada = ref(null);
+const serie_seleccionada = ref<SerieSeleccionada | null>(null);
+import type { Ref } from 'vue';
+const timer: Ref<number | undefined> = ref();
+const searchTerm = ref('');
+const tipoImpresion = ref<'prearmado' | 'embalado'>('prearmado');
+
+const handle_filtro = (filtro: string, search = null) => {
+    searchTerm.value = '';
+    router.get('/seguimiento-por-proceso', { filtro: filtro ?? props.filtro, search: search }, {
+        preserveState: true, // opcional, mantiene el estado actual (útil para scroll o inputs)
+        preserveScroll: true, // opcional, mantiene la posición del scroll
+    });
+
+}
+
+const handleSearch = () => {
+    clearTimeout(timer.value);
+    timer.value = setTimeout(() => {
+        router.get('/seguimiento-por-proceso', {
+            search: searchTerm.value,
+            filtro: props.filtro
+        }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }, 500);
+}
 
 const toDB = (fecha: string, hora: string) => {
     if (!fecha || !hora) return null;
 
-    // Construyo la fecha con hora local
     const [year, month, day] = fecha.split('-').map(Number);
     const [hour, minute] = hora.split(':').map(Number);
 
-    // Creo un Date en local
     let d = new Date(year, month - 1, day, hour, minute);
 
-    // Devuelvo en formato para la BDD
     return d.toISOString().slice(0, 19).replace('T', ' ');
-    // ej: "2025-09-02 09:00:00"
 };
 
+const abrirModalProceso = (item: any) => {
+    // Resetear primero
+    form.reset();
+    serie_seleccionada.value = null;
+
+    // Luego asignar (esto forzará el watch)
+    setTimeout(() => {
+        serie_seleccionada.value = item;
+        proceso_modal.value = true;
+    }, 0);
+};
 
 const update_proceso = () => {
     loading_proceso.value = true;
@@ -81,10 +138,8 @@ const update_proceso = () => {
     form.reset();
 }
 
-
 watch(serie_seleccionada, (nuevoValor: any) => {
     if (nuevoValor) {
-        console.log(nuevoValor, 'hasta aca llega copado');
         const formatFecha = (datetime: string) => {
             if (!datetime) return '';
             const d = new Date(datetime);
@@ -116,38 +171,79 @@ watch(serie_seleccionada, (nuevoValor: any) => {
     }
 });
 
+const abrirModalImpresion = (tipo: 'prearmado' | 'embalado') => {
+    console.log(serie_seleccionada.value, 'abriendo');
 
+    if (tipo === 'prearmado') {
+        if (!form.fecha_prearmado || !form.hora_prearmado || !form.operario_prearmado) {
+            error('Por favor, complete todos los campos antes de imprimir.');
+            return;
+        }
+        tipoImpresion.value = 'prearmado';
+    } else {
+        if (!form.fecha_embalado || !form.hora_embalado || !form.operario_embalado) {
+            error('Por favor, complete todos los campos antes de imprimir.');
+            return;
+        }
+        tipoImpresion.value = 'embalado';
+    }
 
-const timer = ref(null);
-const searchTerm = ref('');
-const handle_filtro = (filtro: string, search = null) => {
-    searchTerm.value = '';
-    router.get('/seguimiento-por-proceso', { filtro: filtro ?? props.filtro, search: search }, {
-        preserveState: true, // opcional, mantiene el estado actual (útil para scroll o inputs)
-        preserveScroll: true, // opcional, mantiene la posición del scroll
-    });
+    modalImpresion.value = true;
 
+    proceso_modal.value = false;
+};
+function generarQRDataURL(productoId: number): string {
+    return `/barcode/generate/${productoId}`
+}
+function generarQRDataURLModelo(controlStockId: number): string {
+    return `/barcode/generate/modelo/${controlStockId}`
 }
 
-const handleSearch = () => {
-    clearTimeout(timer.value);
-    timer.value = setTimeout(() => {
-        router.get('/seguimiento-por-proceso', {
-            search: searchTerm.value,
-            filtro: props.filtro
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-        });
-    }, 500);
+function imprimirEmbalado() {
+    cargandoImpresion.value = false;
+
+    const controlId = serie_seleccionada.value?.control_stock.id;
+
+    router.post('/procesos/imprimir-etiqueta',
+        {
+            control_stock_id: controlId,
+            tipo: tipoImpresion.value
+        },
+        {
+            onStart: () => { cargandoImpresion.value = true; },
+            onSuccess: (page: any) => {
+                success(page.props.flash.message || 'Etiquetas impresas correctamente.');
+                modalImpresion.value = false;
+                proceso_modal.value = true;
+            },
+            onError(errors) {
+                console.log('Errores de impresion:', errors);
+                cargandoImpresion.value = false;
+
+                if (errors.error) {
+                    error(errors.error);
+                } else if (errors.message) {
+                    error(errors.message);
+                } else {
+                    const firstError = Object.values(errors)[0];
+                    if (firstError) {
+                        error(Array.isArray(firstError) ? firstError[0] : firstError);
+                    } else {
+                        error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
+                    }
+                }
+            },
+            onFinish: () => { cargandoImpresion.value = false }
+        }
+    )
 }
+
+
 </script>
-
-
 <template>
 
     <Head title="Seguimiento por proceso" />
-
+    
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
             <div class="flex items-center gap-5 mt-10">
@@ -223,18 +319,18 @@ const handleSearch = () => {
                             <th
                                 class="py-3 px-4 text-center text-sm font-medium text-gray-600 uppercase tracking-wider">
                                 SALIDA</th>
-                            <th v-if="can.gestionar"
+                            <th v-if="can?.gestionar"
                                 class="py-3 px-4 text-center text-sm font-medium text-gray-600 uppercase tracking-wider">
                             </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         <!-- todo: poner item.stockMinimo -->
-                        <tr v-for="(item, index) in props.procesos.data" :key="index" class="">
+                        <tr v-for="(item, index) in props.procesos?.data" :key="index" class="">
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.control_stock.n_serie }}
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.control_stock.modelo.modelo
-                            }}</td>
+                                }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -248,7 +344,7 @@ const handleSearch = () => {
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_prearmador?.nombre
-                            }} {{ item.operario_prearmador?.apellido }}</td>
+                                }} {{ item.operario_prearmador?.apellido }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div v-if="item.control_stock.fecha_inyectado" class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -301,7 +397,7 @@ const handleSearch = () => {
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_embalador?.nombre
-                            }} {{ item.operario_embalador?.apellido }}</td>
+                                }} {{ item.operario_embalador?.apellido }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div v-if="item.control_stock.fecha_salida" class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -317,8 +413,8 @@ const handleSearch = () => {
                                     --/--/----
                                 </div>
                             </td>
-                            <td v-if="can.gestionar" class="py-3 px-4 text-sm text-center text-gray-800">
-                                <button @click="proceso_modal = !proceso_modal; serie_seleccionada = item"
+                            <td v-if="can?.gestionar" class="py-3 px-4 text-sm text-center text-gray-800">
+                                <button @click="abrirModalProceso(item)"
                                     class="cursor-pointer hover:bg-neutral-100 duration-300 p-2 rounded-full">
                                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
@@ -378,9 +474,9 @@ const handleSearch = () => {
                                 <select id="operario_prearmado" v-model="form.operario_prearmado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                                     <option value="">{{ (serie_seleccionada as any)?.operario_prearmador?.nombre || '-'
-                                        }}
+                                    }}
                                     </option>
-                                    <option v-for="operario in operarios" :key="(operario as any).id"
+                                    <option v-for="operario in prearmadores" :key="(operario as any).id"
                                         :value="(operario as any).id">
                                         {{ (operario as any).nombre }} {{ (operario as any).apellido }}
                                     </option>
@@ -388,6 +484,14 @@ const handleSearch = () => {
                             </div>
                             <div class="w-1/4"></div>
                         </div>
+                        <button class="cursor-pointer hover:opacity-70" @click="abrirModalImpresion('prearmado')">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M15 4H13V0H5V4H3C1.34 4 0 5.34 0 7V12H3V18H15V12H18V7C18 5.34 16.66 4 15 4ZM7 2H11V4H7V2ZM13 16H5V11H13V16ZM15 9C14.45 9 14 8.55 14 8C14 7.45 14.45 7 15 7C15.55 7 16 7.45 16 8C16 8.55 15.55 9 15 9Z"
+                                    fill="#0D509C" />
+                            </svg>
+                        </button>
                         <button class="cursor-pointer"
                             @click="form.fecha_prearmado = ''; form.hora_prearmado = ''; form.operario_prearmado = null;">
                             <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
@@ -414,6 +518,7 @@ const handleSearch = () => {
                             <div class="w-1/4"></div>
                             <div class="w-1/4"></div>
                         </div>
+                        <div class="w-4.5"></div>
                         <button class="cursor-pointer" @click="form.fecha_inyectado = ''; form.hora_inyectado = '';">
                             <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
                                 xmlns="http://www.w3.org/2000/svg">
@@ -427,7 +532,7 @@ const handleSearch = () => {
                     <div class="flex items-center gap-5">
                         <div class="w-full flex gap-5 mb-4">
                             <div class="w-1/4">
-                                <label for="fecha_armado" class="block text-sm text-[#5B5B5B]">Fecha armado</label>
+                                <label for="fecha_armado" class="block text-sm text-[#5B5B5B]">Fecha Armado</label>
                                 <input type="date" id="fecha_armado" v-model="form.fecha_armado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
@@ -443,7 +548,7 @@ const handleSearch = () => {
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                                     <option value="">{{ (serie_seleccionada as any)?.operario_armador?.nombre || '-' }}
                                     </option>
-                                    <option v-for="operario in operarios" :key="(operario as any).id"
+                                    <option v-for="operario in armadores" :key="(operario as any).id"
                                         :value="(operario as any).id">
                                         {{ (operario as any).nombre }} {{ (operario as any).apellido }}
                                     </option>
@@ -456,6 +561,7 @@ const handleSearch = () => {
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
                         </div>
+                        <div class="w-4.5"></div>
                         <button class="cursor-pointer"
                             @click="form.fecha_armado = ''; form.hora_armado = ''; form.operario_armado = null; form.numero_motor = '';">
                             <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
@@ -484,9 +590,9 @@ const handleSearch = () => {
                                 <select id="operario_embalado" v-model="form.operario_embalado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                                     <option value="">{{ (serie_seleccionada as any)?.operario_embalador?.nombre || '-'
-                                    }}
+                                        }}
                                     </option>
-                                    <option v-for="operario in operarios" :key="(operario as any).id"
+                                    <option v-for="operario in embaladores" :key="(operario as any).id"
                                         :value="(operario as any).id">
                                         {{ (operario as any).nombre }} {{ (operario as any).apellido }}
                                     </option>
@@ -494,6 +600,14 @@ const handleSearch = () => {
                             </div>
                             <div class="w-1/4"></div>
                         </div>
+                        <button class="cursor-pointer hover:opacity-70" @click="abrirModalImpresion('embalado')">
+                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M15 4H13V0H5V4H3C1.34 4 0 5.34 0 7V12H3V18H15V12H18V7C18 5.34 16.66 4 15 4ZM7 2H11V4H7V2ZM13 16H5V11H13V16ZM15 9C14.45 9 14 8.55 14 8C14 7.45 14.45 7 15 7C15.55 7 16 7.45 16 8C16 8.55 15.55 9 15 9Z"
+                                    fill="#0D509C" />
+                            </svg>
+                        </button>
                         <button class="cursor-pointer"
                             @click="form.fecha_embalado = ''; form.hora_embalado = ''; form.operario_embalado = null;">
                             <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
@@ -536,6 +650,263 @@ const handleSearch = () => {
                                     stroke-width="15" stroke-linecap="round" cx="100" cy="100" r="70"></circle>
                             </svg>
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="modalImpresion" class="fixed inset-0 flex items-center justify-center h-full w-full">
+            <div class="fixed inset-0 bg-black opacity-50 z-1"></div>
+            <div class="bg-white modal-animation rounded-lg shadow-xl max-w-3xl w-full py-3 z-50 max-h-[90vh] relative">
+                <div v-if="cargandoImpresion" class="absolute inset-0 bg-gray-200 opacity-70 z-50 ">
+                </div>
+                <div v-if="cargandoImpresion"
+                    class="absolute flex h-full w-full items-center justify-center pb-10 z-50">
+                    <div class="flex flex-col gap-10 items-center justify-center h-90 w-80 bg-white rounded-2xl">
+                        <div class="animate-spin rounded-full h-30 w-30 border-b-2 border-sky-800"></div>
+                        <p class="flex items-center gap-1">
+                            Imprimiendo
+                            <span class="dot animate-bounce">.</span>
+                            <span class="dot animate-bounce delay-200">.</span>
+                            <span class="dot animate-bounce delay-400">.</span>
+                        </p>
+
+                    </div>
+                </div>
+                <h2 class="text-lg font-bold text-gray-800 px-6">Imprimir etiqueta de
+                    {{ tipoImpresion }}</h2>
+                <div class="py-4 space-y-4 overflow-y-auto max-h-[70vh] px-6">
+                    <div v-if="tipoImpresion === 'embalado'"
+                        class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm text-black">
+                        <!-- Header de la tarjeta con título y botón -->
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-gray-700">Datos generales - Etiqueta {{
+                                serie_seleccionada?.control_stock.n_serie }}</h3>
+                        </div>
+
+                        <!-- Campos en grid de 3 columnas -->
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <!-- Ingreso a depósito -->
+                            <div>
+                                <label class="block text-gray-500 mb-2">Ingreso a depósito</label>
+                                <div class="relative">
+                                    <div
+                                        class="flex items-center text-center border border-gray-300 rounded px-3 py-2 h-10.5">
+                                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor"
+                                            viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
+                                        </svg>
+                                        <span class="text-sm text-gray-900 mt-0.5">
+                                            {{ serie_seleccionada?.control_stock?.fecha_embalado
+                                                ? new
+                                                    Date(serie_seleccionada.control_stock.fecha_embalado).toLocaleDateString('es-ES')
+                                                : ''
+                                            }}
+                                        </span>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- N° de serie -->
+                            <div>
+                                <label class="block text-gray-500 mb-2">N° de serie</label>
+                                <div class="border border-gray-300 rounded bg-white px-3 py-2">
+                                    <span class="text-sm font-medium text-gray-900">{{
+                                        serie_seleccionada?.control_stock.n_serie
+                                    }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Modelo -->
+                            <div>
+                                <label class="block text-gray-500 mb-2">Modelo</label>
+                                <div class="border border-gray-300 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo.nombre_modelo
+                                    }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Código de barras -->
+                        <div class="bg-gray-50 rounded-lg p-4 flex justify-center">
+                            <div>
+                                <img :src="generarQRDataURL(serie_seleccionada?.control_stock?.id ?? 0)"
+                                    :alt="`Código de barras ${serie_seleccionada?.control_stock.n_serie}`"
+                                    class="h-16 w-auto mx-auto block mb-2" />
+                                <div class="text-center text-xs font-medium text-gray-700 tracking-wide">
+                                    {{ serie_seleccionada?.control_stock.n_serie }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="tipoImpresion === 'prearmado'"
+                        class="bg-white rounded-lg border border-gray-200 p-6 shadow-sm text-black">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-semibold text-gray-700">Datos generales - Etiqueta {{
+                                serie_seleccionada?.control_stock.n_serie }}</h3>
+                        </div>
+                        <div class="flex flex-col gap-4">
+                            <div class="flex gap-4 w-full">
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/3 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Fecha</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.fecha_prearmado
+                                            ? new
+                                                Date(serie_seleccionada.control_stock.fecha_prearmado).toLocaleDateString('es-ES')
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/3 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Serie</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.n_serie
+                                            ? serie_seleccionada.control_stock.n_serie
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/3 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Modelo</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.nombre_modelo
+                                            : ''
+                                    }}</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 w-full">
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Tension</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.tension
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Frecuencia</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.frecuencia
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Corriente</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.corriente
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Aislacion</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.aislacion
+                                            : ''
+                                    }}</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 w-full">
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Sistema</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.sistema
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Vol. Bruto</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.volumen
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Ag. Espum.</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.espumante
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/4 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Clase Clim.</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.clase
+                                            : ''
+                                    }}</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 w-full">
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/2 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Refrigerante</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.gas
+                                            : ''
+                                    }}</span>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/2 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Cantidad</span>
+                                    <span class="text-sm text-gray-900">{{
+                                        serie_seleccionada?.control_stock.modelo
+                                            ? serie_seleccionada.control_stock.modelo.cantidad_gas
+                                            : ''
+                                    }}</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 w-full">
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/2 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Serie</span>
+                                    <div>
+                                        <img :src="generarQRDataURL(serie_seleccionada?.control_stock?.id ?? 0)"
+                                            :alt="`Código de barras ${serie_seleccionada?.control_stock.n_serie}`"
+                                            class="h-16 w-auto mx-auto block mb-2" />
+                                        <div class="text-center text-xs font-medium text-gray-700 tracking-wide">
+                                            {{ serie_seleccionada?.control_stock.n_serie }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div
+                                    class="flex flex-col gap-1 border border-gray-200 w-1/2 rounded bg-white px-3 py-2">
+                                    <span class="text-sm text-gray-500">Modelo</span>
+                                    <div>
+                                        <img :src="generarQRDataURLModelo(serie_seleccionada?.control_stock?.id ?? 0)"
+                                            :alt="`Código de barras ${serie_seleccionada?.control_stock.modelo.modelo}`"
+                                            class="h-16 w-auto mx-auto block mb-2" />
+                                        <div class="text-center text-xs font-medium text-gray-700 tracking-wide">
+                                            {{ serie_seleccionada?.control_stock.modelo.modelo }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-6 flex justify-end gap-2 ">
+                        <button class="mt-2 bg-gray-200 text-gray-800 rounded-lg px-4 py-2"
+                            @click="proceso_modal = true; modalImpresion = false">Volver</button>
+                        <button class="mt-2 bg-[#0D509C] text-white rounded-lg px-4 py-2"
+                            @click="imprimirEmbalado">Imprimir</button>
                     </div>
                 </div>
             </div>

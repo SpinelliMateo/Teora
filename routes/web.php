@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('seguimiento-por-proceso', [ProcesosOperariosController::class, 'index'])->name('procesos');
         Route::middleware(['permission:gestionar servicio proceso'])->group(function () {    
             Route::put('update_proceso', [ProcesosOperariosController::class, 'update_proceso'])->name('update_proceso');
+            Route::post('/procesos/imprimir-etiqueta', [ProcesosOperariosController::class, 'imprimirEtiqueta'])->name('procesos.imprimir-etiqueta');
         });
     });
 

@@ -50,6 +50,7 @@ const props = defineProps<Props>();
 
 const remitosSeleccionados = ref<number[]>([]);
 const controlStockItems = ref<ControlStockItem[]>([]);
+const numeroSerieInput = ref<HTMLInputElement | null>(null)
 const modelosResumen = ref<ModeloResumen[]>([]);
 const numeroSerie = ref('');
 const isLoadingModelos = ref(false);
@@ -141,6 +142,7 @@ const buscarControlStock = async () => {
             const existe = controlStockItems.value.some(item => item.id === response.data.data.id);
             if (existe) {
                 mostrarMensaje('Este número de serie ya fue agregado', 'error');
+                numeroSerie.value = '';
                 return;
             }
 
@@ -150,12 +152,15 @@ const buscarControlStock = async () => {
             mostrarMensaje(response.data.message, 'success');
         } else {
             mostrarMensaje(response.data.message, 'error');
+            numeroSerie.value = '';
         }
     } catch (error) {
         console.error('Error al buscar control stock:', error);
         mostrarMensaje('Error al buscar el número de serie', 'error');
     } finally {
         isLoadingBusqueda.value = false;
+      await nextTick()
+      numeroSerieInput.value?.focus()
     }
 };
 
@@ -228,6 +233,7 @@ const procesarDespacho = async () => {
             controlStockItems.value = [];
             modelosResumen.value = [];
             numeroSerie.value = '';
+            window.location.reload();
         } else {
             mostrarMensaje(response.data.message, 'error');
         }
@@ -275,7 +281,8 @@ const handleEnterNumeroSerie = (event: KeyboardEvent) => {
                         N° de Serie
                     </label>
                     <div class="relative">
-                        <input id="numero-serie" v-model="numeroSerie" type="text" placeholder="1234"
+                        <input ref="numeroSerieInput" id="numero-serie" v-model="numeroSerie" type="text"
+                            placeholder="1234"
                             class="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:border-blue-custom text-lg bg-white transition-all duration-200"
                             style="--tw-ring-color: rgba(13, 80, 156, 0.3); border-color: #d1d5db;"
                             @keydown="handleEnterNumeroSerie" :disabled="isLoadingBusqueda" />

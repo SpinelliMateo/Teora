@@ -154,7 +154,7 @@ class EmbaladoService
             return null; // La orden no existe o ya está completada
         }
 
-        $todosEmbalados = $orden->controlStock()->whereNotNull('fecha_embalado')->get();
+        $todosEmbalados = $orden->controlStock()->whereNull('fecha_embalado')->get();
 
         if ($todosEmbalados->isEmpty()) {
             $orden->update([
