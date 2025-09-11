@@ -18,6 +18,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\ModeloController;
 use App\Http\Controllers\OperarioController;
+use App\Http\Controllers\QzController;
 
 Route::get('/', function () {
     return Inertia::render('auth/Login');
@@ -36,7 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ->name('sectores.operarios.sector.prearmado.etiqueta');
     Route::get('/barcode/etiqueta-largo/{controlStockId}', [BarcodeController::class, 'etiquetaLargo'])
     ->name('sectores.operarios.barcode.etiqueta.largo');
-    
+    Route::post('/qz/sign', [QzController::class, 'sign'])->name('qz.sign');
 
 
     // DASHBOARD

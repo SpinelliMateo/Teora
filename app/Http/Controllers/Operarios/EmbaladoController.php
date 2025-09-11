@@ -122,7 +122,7 @@ class EmbaladoController extends Controller
         ]);
 
     }
-    public function imprimirEtiqueta(Request $request): RedirectResponse
+    public function imprimirEtiqueta(Request $request): JsonResponse
     {
         $request->validate([
             'control_stock_ids' => 'required|array|min:1',
@@ -130,35 +130,33 @@ class EmbaladoController extends Controller
         ]);
 
         try {
-            // Verificar que todos los productos estén embalados
             $productos = $this->embaladoService->obtenerProductosEmbaladosParaEtiquetas($request->control_stock_ids);
+            
             if ($productos->isEmpty()) {
-                return back()->withErrors(['message' => 'No se encontraron productos embalados válidos para reimprimir.']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron productos embalados válidos para reimprimir.'
+                ], 404);
             }
+
+            $zpls = [];
             foreach ($productos as $controlStock) {
-                // Construir el ZPL con datos reales
-                $zpl = $this->construirTemplateZPL($controlStock);
-
-                // Enviar directamente a la impresora HPRT
-                $resultado = $this->enviarAImpresoraHPRT($zpl);
-
-                if ($resultado){
-                    $impresas[] = $controlStock['n_serie'];
-                }else{
-                    return back()->withErrors(['message' => 'Error al enviar a la impresora la serie: ' . $controlStock['n_serie']]);
-                }
+                $zpls[] = $this->construirTemplateZPL($controlStock);
             }
 
-            if (count($impresas) == count($productos)) {
-                return back()->with('message', 'Etiquetas embaladas e impresas correctamente: ' . implode('- ', $impresas));
-            } else {
-                return back()->withErrors(['message' => 'Error al enviar a la impresora']);
-            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Etiquetas generadas correctamente',
+                'zpls' => $zpls, // Devolver array de ZPLs
+                'cantidad' => count($zpls)
+            ]);
 
         } catch (\Exception $e) {
-            return back()->withErrors(['message' => 'Error al procesar la impresion: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la impresión: ' . $e->getMessage()
+            ], 500);
         }
-        
     }
     private function construirTemplateZPL(array $controlStock)
     {
@@ -200,32 +198,6 @@ class EmbaladoController extends Controller
                 ";
 
         return $zpl;
-        }
-
-       private function enviarAImpresoraHPRT($zpl)
-        {
-            try {
-                // Guardar archivo ZPL temporal
-                $tempFile = tempnam(sys_get_temp_dir(), 'hprt_') . '.txt';
-                file_put_contents($tempFile, $zpl);
-
-                Log::info("Archivo ZPL guardado en: $tempFile");
-                // Usar notepad para imprimir a través del driver HPRT
-                $command = 'copy /b ' . $tempFile . ' "\\\localhost\HPRTHT800"';
-                exec($command, $output, $return_var);
-
-                // Borrar el archivo temporal
-                unlink($tempFile);
-
-                Log::info("Comando ejecutado: $command");
-                Log::info("Return var: $return_var");
-                Log::info("Output: " . implode("\n", $output));
-
-                return $return_var === 0;
-            } catch (Exception $e) {
-                Log::error('Error al imprimir: ' . $e->getMessage());
-                return false;
-            }
         }
     }
 

@@ -3,8 +3,10 @@ import { Head, router } from '@inertiajs/vue3'
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import axios from 'axios'
 import { useToast } from '@/composables/useToast'
+import { useQzTray } from '@/composables/useQzTray'
 
 const { success, error } = useToast()
+const { imprimirMultiplesConQZTray } = useQzTray();
 
 type Operario = { id: number; nombre: string; apellido: string; codigo_qr: string }
 type ControlStock = {
@@ -271,8 +273,8 @@ function generarQRDataURL(productoId: number): string {
   return `/barcode/generate/${productoId}`
 }
 
-function imprimirEtiquetasYaEmbalados() {
-  cargandoImpresion.value = false;
+const imprimirEtiquetasYaEmbalados = async () => {
+  cargandoImpresion.value = true;
   errorMsg.value = null;
   successMsg.value = null;
 
@@ -284,43 +286,40 @@ function imprimirEtiquetasYaEmbalados() {
     .filter(id => id !== undefined)
 
   if (productosIds.length > 0) {
-    
-
-    router.post('/sectores/operarios/embalado/imprimir-etiqueta',
-      {
-        control_stock_ids: productosIds
-      },
-      {
-        onStart: () => { cargandoImpresion.value = true; errorMsg.value = null; successMsg.value = null; },
-        onSuccess: (page: any) => {
-          successMsg.value = (page.props.flash as any)?.message || '';
-          reiniciar();
+    try {
+      const response = await fetch('/sectores/operarios/embalado/imprimir-etiqueta', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement).content
         },
-        onError(errors) {
-          console.log('Errores de impresion:', errors);
-          cargandoImpresion.value = false;
+        body: JSON.stringify({
+          control_stock_ids: productosIds
+        })
+      });
 
-          if (errors.error) {
-            error(errors.error);
-          } else if (errors.message) {
-            error(errors.message);
-          } else {
-            const firstError = Object.values(errors)[0];
-            if (firstError) {
-              error(Array.isArray(firstError) ? firstError[0] : firstError);
-            } else {
-              error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
-            }
-          }
-        },
-        onFinish: () => { cargandoImpresion.value = false }
+      const data = await response.json();
+
+      if (!data.success) {
+        error(data.message || "Error al generar etiquetas");
+        return;
       }
-    )
+
+      await imprimirMultiplesConQZTray(data.zpls);
+      success(data.message || `${data.cantidad} etiquetas impresas correctamente.`);
+      
+      reiniciar();
+    } catch (e) {
+      console.error('Errores de impresión:', e);
+      error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
+    }
   } else {
     errorMsg.value = 'No se pudieron obtener los IDs de los productos para reimprimir'
     limpiarMensajeDespues()
   }
-}
+  
+  cargandoImpresion.value = false;
+};
 
 function reiniciar() {
   if (timeoutId.value) {

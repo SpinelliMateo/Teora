@@ -6,8 +6,10 @@ import { router } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 import 'vue-select/dist/vue-select.css';
+import { useQzTray } from '@/composables/useQzTray';
 
 const { success, error } = useToast();
+const { imprimirConQZTray } = useQzTray();
 
 const props = defineProps({
     procesos: Array,
@@ -199,45 +201,43 @@ function generarQRDataURLModelo(controlStockId: number): string {
     return `/barcode/generate/modelo/${controlStockId}`
 }
 
-function imprimirEmbalado() {
+const imprimirEmbalado = async () => {
+  const controlId = serie_seleccionada.value?.control_stock.id;
+  if (!controlId) return;
+
+  try {
+    cargandoImpresion.value = true;
+
+    const response = await fetch('/procesos/imprimir-etiqueta', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement).content
+      },
+      body: JSON.stringify({
+        control_stock_id: controlId,
+        tipo: tipoImpresion.value
+      })
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      error(data.message || "Error al generar etiqueta");
+      return;
+    }
+
+    await imprimirConQZTray(data.zpl);
+    success(data.message || 'Etiquetas impresas correctamente.');
+    modalImpresion.value = false;
+    proceso_modal.value = true;
+  } catch (e) {
+    console.error('Errores de impresión:', e);
+    error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
+  } finally {
     cargandoImpresion.value = false;
-
-    const controlId = serie_seleccionada.value?.control_stock.id;
-
-    router.post('/procesos/imprimir-etiqueta',
-        {
-            control_stock_id: controlId,
-            tipo: tipoImpresion.value
-        },
-        {
-            onStart: () => { cargandoImpresion.value = true; },
-            onSuccess: (page: any) => {
-                success(page.props.flash.message || 'Etiquetas impresas correctamente.');
-                modalImpresion.value = false;
-                proceso_modal.value = true;
-            },
-            onError(errors) {
-                console.log('Errores de impresion:', errors);
-                cargandoImpresion.value = false;
-
-                if (errors.error) {
-                    error(errors.error);
-                } else if (errors.message) {
-                    error(errors.message);
-                } else {
-                    const firstError = Object.values(errors)[0];
-                    if (firstError) {
-                        error(Array.isArray(firstError) ? firstError[0] : firstError);
-                    } else {
-                        error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
-                    }
-                }
-            },
-            onFinish: () => { cargandoImpresion.value = false }
-        }
-    )
-}
-
+  }
+};
 
 </script>
 <template>

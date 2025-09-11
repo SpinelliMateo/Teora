@@ -4,8 +4,10 @@ import { Head } from '@inertiajs/vue3';
 import { router } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 import { ref, reactive } from 'vue';
+import { useQzTray } from '@/composables/useQzTray';
 
 const { success, error } = useToast();
+const { imprimirConQZTray } = useQzTray();
 
 interface Sector {
     id: number;
@@ -32,6 +34,8 @@ const props = defineProps<{
 
 const timer = ref<number | null>(null);
 const searchTerm = ref('');
+const cargando = ref(false)
+const errorMsg = ref<string | null>(null)
 
 const handleSearch = () => {
     if (timer.value) clearTimeout(timer.value);
@@ -244,20 +248,38 @@ const cerrarModalImprimir = () => {
 };
 
 
-const imprimirEtiqueta = () => {
-    if (!modalPrint.operario) return;
+const imprimirEtiqueta = async () => {
+  if (!modalPrint.operario) return;
 
-    router.post(route('operarios.imprimir', modalPrint.operario), {}, {
-        onSuccess: (page: any) => {
-            cerrarModalImprimir();
-            const mensaje = (page.props.flash as any)?.message || 'Etiqueta impresa correctamente';
-            success(mensaje);
-        },
-        onError: (errors) => {
-            console.error("Error:", errors);
-        }
+  try {
+    cargando.value = true;
+    errorMsg.value = null;
+
+    const response = await fetch(route('operarios.imprimir', modalPrint.operario), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement).content
+      },
+      body: JSON.stringify({})
     });
 
+    const data = await response.json();
+
+    if (!data.success) {
+      error(data.message || "Error al generar etiqueta");
+      return;
+    }
+
+    await imprimirConQZTray(data.zpl);
+    success(data.message);
+    cerrarModalImprimir();
+  } catch (e) {
+    console.error(e);
+    error("Error inesperado al imprimir");
+  } finally {
+    cargando.value = false;
+  }
 };
 
 const getSectorNombres = (sectores: Sector[]) => {

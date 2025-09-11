@@ -7,7 +7,7 @@ use App\Models\Operario;
 use Illuminate\Http\Request;
 use App\Models\ProcesosOperarios;
 use Exception;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class ProcesosOperariosController extends Controller
@@ -160,7 +160,7 @@ class ProcesosOperariosController extends Controller
             ]);
         }
     }
-    public function imprimirEtiqueta(Request $request): RedirectResponse
+    public function imprimirEtiqueta(Request $request): JsonResponse
     {
         $request->validate([
             'control_stock_id' => 'required|integer|exists:control_stock,id',
@@ -174,20 +174,21 @@ class ProcesosOperariosController extends Controller
             } elseif ($request->tipo === 'embalado') {
                 $zpl = $this->construirTemplateEmbaladoZPL($controlStock);
             } else {
-                return back()->withErrors(['message' => 'Tipo de impresión no válido.']);
+                return response()->json(['success' => false, 'message' => 'Tipo de impresión no válido.'], 400);
             }
             
-            $resultado = $this->enviarAImpresoraHPRT($zpl);
-
-            if ($resultado){
-                return back()->with('message', 'Etiquetas embaladas e impresas correctamente: ' . $controlStock->n_serie);
-            }else{
-                return back()->withErrors(['message' => 'Error al enviar a la impresora la serie: ' . $controlStock->n_serie]);
-            }
-
+            return response()->json([
+                'success' => true,
+                'message' => 'Etiqueta generada',
+                'zpl' => $zpl
+            ]);
 
         } catch (\Exception $e) {
-            return back()->withErrors(['message' => 'Error al procesar la impresion: ' . $e->getMessage()]);
+            Log::error('Error en imprimirEtiqueta: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar la impresion: ' . $e->getMessage()
+            ], 500);
         }
         
     }
@@ -354,29 +355,5 @@ class ProcesosOperariosController extends Controller
                     ";
 
         return $zpl;
-    }
-     private function enviarAImpresoraHPRT($zpl)
-    {
-        try {
-            $tempFile = tempnam(sys_get_temp_dir(), 'hprt_') . '.txt';
-            file_put_contents($tempFile, $zpl);
-
-            Log::info("Archivo ZPL guardado en: $tempFile");
-            // Usar notepad para imprimir a través del driver HPRT
-            $command = 'copy /b ' . $tempFile . ' "\\\localhost\HPRTHT800"';
-            exec($command, $output, $return_var);
-
-            // Borrar el archivo temporal
-            unlink($tempFile);
-
-            Log::info("Comando ejecutado: $command");
-            Log::info("Return var: $return_var");
-            Log::info("Output: " . implode("\n", $output));
-
-            return $return_var === 0;
-        } catch (Exception $e) {
-            Log::error('Error al imprimir: ' . $e->getMessage());
-            return false;
-        }
     }
 }
