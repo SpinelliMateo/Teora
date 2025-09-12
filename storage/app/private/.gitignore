@@ -1,2 +1,4 @@
 *
 !.gitignore
+!qz/
+!qz/private-key.pem
