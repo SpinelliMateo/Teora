@@ -18,6 +18,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\ModeloController;
 use App\Http\Controllers\OperarioController;
+use App\Http\Controllers\QzController;
 
 Route::get('/', function () {
     return Inertia::render('auth/Login');
@@ -36,7 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ->name('sectores.operarios.sector.prearmado.etiqueta');
     Route::get('/barcode/etiqueta-largo/{controlStockId}', [BarcodeController::class, 'etiquetaLargo'])
     ->name('sectores.operarios.barcode.etiqueta.largo');
-    
+    Route::post('/qz/sign', [QzController::class, 'sign'])->name('qz.sign');
 
 
     // DASHBOARD
@@ -81,6 +82,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('seguimiento-por-proceso', [ProcesosOperariosController::class, 'index'])->name('procesos');
         Route::middleware(['permission:gestionar servicio proceso'])->group(function () {    
             Route::put('update_proceso', [ProcesosOperariosController::class, 'update_proceso'])->name('update_proceso');
+            Route::post('/procesos/imprimir-etiqueta', [ProcesosOperariosController::class, 'imprimirEtiqueta'])->name('procesos.imprimir-etiqueta');
         });
     });
 
@@ -158,7 +160,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
        Route::delete('operarios/{operario}', [OperarioController::class, 'destroy'])->name('operarios.destroy');
        Route::get('/operarios/barcode/{operario}', [OperarioController::class, 'generarCodigoBarras'])->name('operarios.barcode');
        Route::post('/operarios/{operario}/imprimir', [OperarioController::class, 'imprimirEtiqueta'])->name('operarios.imprimir');
-   
+
+       // Modelos
        Route::get('modelos', [ModeloController::class, 'index'])->name('modelos');
        Route::get('modelos/create', [ModeloController::class, 'create'])->name('modelos.create');
        Route::post('modelos', [ModeloController::class, 'store'])->name('modelos.store');

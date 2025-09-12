@@ -3,8 +3,10 @@ import { Head, router } from '@inertiajs/vue3'
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import { useToast } from '@/composables/useToast';
+import { useQzTray } from '@/composables/useQzTray';
 
 const { success, error } = useToast();
+const { imprimirConQZTray } = useQzTray();
 
 type Operario = { id: number; nombre: string, apellido: string }
 type Modelo = {
@@ -73,46 +75,46 @@ function cancelar() {
   errorMsg.value = null
 }
 
-function continuar() {
-  if (!selectedOperarioId.value || !selectedModeloId.value) return
-  router.post('/sectores/operarios/prearmado',
-    {
-      operario_id: selectedOperarioId.value,
-      modelos: [selectedModeloId.value],
-    },
-    {
-      onStart: () => { cargando.value = true; errorMsg.value = null },
-      onSuccess: (page: any) => {
-        cancelar()
-        const mensaje = (page.props.flash as any)?.message || '';
-        success(mensaje);
-      },
-      onError(errors) {
-        console.log('Errores de impresion:', errors);
+async function continuar() {
+  try {
+    cargando.value = true;
+    errorMsg.value = null;
 
-        if (errors.error) {
-          error(errors.error);
-        } else if (errors.message) {
-          error(errors.message);
-        } else {
-          const firstError = Object.values(errors)[0];
-          if (firstError) {
-            error(Array.isArray(firstError) ? firstError[0] : firstError);
-          } else {
-            error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
-          }
-        }
+    const response = await fetch('/sectores/operarios/prearmado', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement).content
       },
-      onFinish: () => { cargando.value = false }
+      body: JSON.stringify({
+        operario_id: selectedOperarioId.value,
+        modelos: [selectedModeloId.value],
+      })
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      error(data.message || "Error al generar etiqueta");
+      return;
     }
-  )
+
+    await imprimirConQZTray(data.zpl);
+    success(data.message);
+    cancelar();
+  } catch (e) {
+    console.error(e);
+    error("Error inesperado al imprimir");
+  } finally {
+    cargando.value = false;
+  }
 }
 
-/** —— UI helpers —— **/
 const pageBgClass = computed(() =>
   currentStep.value === 1 ? 'bg-gray-50' : 'bg-pink-50'
 )
 const stepCircleClass = (n: number) =>
+
   currentStep.value >= n
     ? 'bg-sky-800 text-white shadow'
     : 'bg-gray-300 text-gray-600'

@@ -145,6 +145,7 @@ async function verificarOperario() {
 
   cargando.value = true
   errorMsg.value = null
+  let shouldFocus = false
 
   try {
     const { data } = await axios.post('/sectores/operarios/armado/validar-operario', {
@@ -158,14 +159,19 @@ async function verificarOperario() {
       errorMsg.value = data.message
       limpiarMensajeDespues()
       operario.value = ''
-      await nextTick()
-      operarioInput.value?.focus()
+      shouldFocus = true
     }
   } catch (e: any) {
     errorMsg.value = e?.response?.data?.message || 'Error al validar el operario.'
     limpiarMensajeDespues()
+    shouldFocus = true
   } finally {
     cargando.value = false
+
+    if (shouldFocus) {
+      await nextTick()
+      operarioInput.value?.focus()
+    }
   }
 }
 

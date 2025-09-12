@@ -44,7 +44,7 @@ class PrearmadoController extends Controller
         return response()->json(['modelos' => $modelos]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'operario_id' => 'required|exists:operarios,id',
@@ -56,9 +56,12 @@ class PrearmadoController extends Controller
             $modeloId = $request->modelos[0];
             $modelos = $this->prearmadoService->obtenerModelosPendientes($request->operario_id);
             $modeloData = $modelos->firstWhere('id', $modeloId);
-            
+
             if (!$modeloData || !$modeloData['orden_fabricacion_id']) {
-                return back()->withErrors(['message' => 'Modelo o orden de fabricación no encontrada.']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Modelo o orden de fabricación no encontrada.'
+                ], 404);
             }
 
             $controlStock = $this->controlStockService->crearControlStock(
@@ -68,26 +71,28 @@ class PrearmadoController extends Controller
             );
 
             if (!$controlStock) {
-                return back()->withErrors(['message' => 'Control de stock no encontrado']);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Control de stock no encontrado'
+                ], 404);
             }
-            
 
-            // Construir el ZPL con datos reales
             $zpl = $this->construirTemplateZPL($controlStock);
 
-            // Enviar directamente a la impresora HPRT
-            $resultado = $this->enviarAImpresoraHPRT($zpl);
-
-            if ($resultado) {
-                return back()->with('message', 'Etiqueta impresa correctamente');
-            } else {
-                return back()->withErrors(['message' => 'Error al enviar a la impresora']);
-            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Etiqueta generada',
+                'zpl' => $zpl
+            ]);
 
         } catch (\Exception $e) {
-            return back()->withErrors(['message' => 'Error al crear el prearmado: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al crear el prearmado: ' . $e->getMessage()
+            ], 500);
         }
     }
+
     private function construirTemplateZPL(ControlStock $controlStock)
     {
         $fecha = \Carbon\Carbon::parse($controlStock->fecha_prearmado)->format('d-m-Y');
@@ -210,31 +215,5 @@ class PrearmadoController extends Controller
                 ";
 
         return $zpl;
-        }
-
-       private function enviarAImpresoraHPRT($zpl)
-        {
-            try {
-                // Guardar archivo ZPL temporal
-                $tempFile = tempnam(sys_get_temp_dir(), 'hprt_') . '.txt';
-                file_put_contents($tempFile, $zpl);
-
-                Log::info("Archivo ZPL guardado en: $tempFile");
-                // Usar notepad para imprimir a través del driver HPRT
-                $command = 'copy /b ' . $tempFile . ' "\\\localhost\HPRTHT800"';
-                exec($command, $output, $return_var);
-
-                // Borrar el archivo temporal
-                unlink($tempFile);
-
-                Log::info("Comando ejecutado: $command");
-                Log::info("Return var: $return_var");
-                Log::info("Output: " . implode("\n", $output));
-
-                return $return_var === 0;
-            } catch (Exception $e) {
-                Log::error('Error al imprimir: ' . $e->getMessage());
-                return false;
-            }
-        }
+    }
 }

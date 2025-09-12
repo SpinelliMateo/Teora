@@ -89,10 +89,12 @@ class DespachoService
                     'message' => $validacion['mensaje']
                 ];
             }
-
+            
             $this->actualizarFechaSalidaControlStock($controlStockIds);
 
             $this->finalizarRemitos($remitoIds);
+
+            $this->crearHistorialDespacho($remitoIds, $controlStockIds);
 
             DB::commit();
 
@@ -142,5 +144,9 @@ class DespachoService
     private function finalizarRemitos(array $remitoIds): void
     {
         $this->remitoRepository->updateEstado($remitoIds, 'finalizado');
+    }
+    private function crearHistorialDespacho(array $remitoIds, array $controlStockIds): void
+    {
+        $this->remitoRepository->crearHistorial($remitoIds, $controlStockIds);
     }
 }

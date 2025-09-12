@@ -23,7 +23,12 @@ class InyectadoController extends Controller
         $numeroSerie = $data['numero_serie'];
 
         $resultado = $this->inyectadoService->procesarInyectado($numeroSerie);
+        
+        if ($resultado['success']) {
+            return back()->with($resultado);
+        } else {
+            return back()->withErrors(['error' => $resultado['message']]);
+        }
 
-        return back()->with($resultado);
     }
 }

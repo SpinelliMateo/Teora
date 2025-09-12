@@ -240,14 +240,11 @@ class OperarioController extends Controller
             // Construir el ZPL con datos reales
             $zpl = $this->construirTemplateZPL($operario);
 
-            // Enviar directamente a la impresora HPRT
-            $resultado = $this->enviarAImpresoraHPRT($zpl);
-
-            if ($resultado) {
-                return back()->with('message', 'Etiqueta impresa correctamente');
-            } else {
-                return back()->withErrors(['message' => 'Error al enviar a la impresora']);
-            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Etiqueta generada',
+                'zpl' => $zpl
+            ]);
 
         } catch (\Exception $e) {
             return back()->withErrors(['message' => 'Error al imprimir: ' . $e->getMessage()]);
@@ -285,31 +282,5 @@ class OperarioController extends Controller
                 ";
 
         return $zpl;
-        }
-
-       private function enviarAImpresoraHPRT($zpl)
-        {
-            try {
-                // Guardar archivo ZPL temporal
-                $tempFile = tempnam(sys_get_temp_dir(), 'hprt_') . '.txt';
-                file_put_contents($tempFile, $zpl);
-
-                Log::info("Archivo ZPL guardado en: $tempFile");
-                // Usar notepad para imprimir a través del driver HPRT
-                $command = 'copy /b ' . $tempFile . ' "\\\localhost\HPRTHT800"';
-                exec($command, $output, $return_var);
-
-                // Borrar el archivo temporal
-                unlink($tempFile);
-
-                Log::info("Comando ejecutado: $command");
-                Log::info("Return var: $return_var");
-                Log::info("Output: " . implode("\n", $output));
-
-                return $return_var === 0;
-            } catch (\Exception $e) {
-                Log::error('Error al imprimir: ' . $e->getMessage());
-                return false;
-            }
-        }
+    }
 }
