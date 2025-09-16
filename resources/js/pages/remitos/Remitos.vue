@@ -308,31 +308,31 @@ const handle_change_estado = ((remito, estado: string) => {
     <Head title="Remitos" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <h1 class="text-[32px] font-bold text-gray-800">Remitos</h1>
             </div>
 
-            <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-5 ml-1">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-5 lg:ml-1">
                     <div class="flex flex-col items-center">
-                        <button @click="handle_filtro('EN PROCESO')" class="text-lg  cursor-pointer"
+                        <button @click="handle_filtro('EN PROCESO')" class="text-lg  cursor-pointer min-h-[56px] lg:min-h-auto"
                             :class="filtro == 'EN PROCESO' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">EN
                             PROCESO</button>
-                        <div class="h-[2px] w-[110%] mt-1"
+                        <div class="h-[2px] w-[90%] lg:w-[110%] mt-1"
                             :class="filtro == 'EN PROCESO' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                     </div>
                     <div class="flex flex-col items-center">
-                        <button @click="handle_filtro('DESPACHO')" class="text-lg cursor-pointer"
+                        <button @click="handle_filtro('DESPACHO')" class="text-lg cursor-pointer min-h-[56px] lg:min-h-auto"
                             :class="filtro == 'DESPACHO' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">EN
                             DESPACHO</button>
-                        <div class="h-[2px]  w-[110%] mt-1"
+                        <div class="h-[2px] w-[90%] lg:w-[110%] mt-1"
                             :class="filtro == 'DESPACHO' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                     </div>
                     <div class="flex flex-col items-center">
-                        <button @click="handle_filtro('FINALIZADOS')" class="text-lg cursor-pointer"
+                        <button @click="handle_filtro('FINALIZADOS')" class="text-lg cursor-pointer min-h-[56px] lg:min-h-auto"
                             :class="filtro == 'FINALIZADOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">FINALIZADOS</button>
-                        <div class="h-[2px]  w-[110%] mt-1"
+                        <div class="h-[2px] w-[90%] lg:w-[110%] mt-1"
                             :class="filtro == 'FINALIZADOS' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                     </div>
                 </div>
@@ -355,7 +355,7 @@ const handle_change_estado = ((remito, estado: string) => {
                         remito</button>
                 </div>
             </div>
-            <div class="grid grid-cols-5 gap-6 mt-2">
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-2">
                 <template v-for="remito in (remitos as any)?.data" :key="remito?.id">
                     <div v-if="remito"
                         @click="can?.gestionar && remito.estado !== 'finalizado' ? abrirModalEdicion(remito) : null"
@@ -429,10 +429,10 @@ const handle_change_estado = ((remito, estado: string) => {
                         </button>
             </div>
             <div v-if="remito_modal" @click.self="remito_modal = !remito_modal; confirmandoEliminacion = false;"
-                class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
+                class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
                 style="background-color: rgba(0, 0, 0, 0.5);">
                 <div
-                    class="bg-white rounded-lg p-6 w-[40vw] modal-animation overflow-y-auto max-h-[90vh] min-h-[400px] flex flex-col justify-between">
+                    class="bg-white rounded-lg p-6 lg:w-[40vw] modal-animation overflow-y-auto max-h-[90vh] min-h-[400px] flex flex-col justify-between">
 
                     <div class="flex flex-col gap-1.5 mb-6">
                         <div class="flex justify-between items-center mb-4 h-10">
@@ -471,7 +471,7 @@ const handle_change_estado = ((remito, estado: string) => {
                                 </Transition>
                             </div>
                         </div>
-                        <div class="flex gap-8 w-full justify-between">
+                        <div class="flex flex-col lg:flex-row gap-4 lg:gap-8 w-full justify-between">
                             <div class="flex flex-col gap-1 w-full">
                                 <label for="n_remito" class="text-[#5B5B5B]">N° de remito</label>
                                 <input type="text" id="n_remito" v-model="form.n_remito"
@@ -486,7 +486,7 @@ const handle_change_estado = ((remito, estado: string) => {
 
                         <div class="flex flex-col gap-2">
                             <div v-for="(modelo, index) in form.modelos" :key="index"
-                                class="flex gap-8 w-full justify-between">
+                                class="flex gap-4 lg:gap-8 w-full justify-between">
                                 <div class="flex flex-col gap-1 w-full">
                                     <label :for="'modelo_' + index" class="text-[#5B5B5B]">Modelo</label>
                                     <select :id="'modelo_' + index" v-model="modelo.modelo_id" :class="[
@@ -512,7 +512,7 @@ const handle_change_estado = ((remito, estado: string) => {
                                     </div>
                                 </div>
                                 <div class="w-full flex">
-                                    <div class="flex flex-col gap-1 w-full">
+                                    <div class="flex flex-col gap-1 w-[90px] lg:w-full">
                                         <label :for="'cantidad_' + index" class="text-[#5B5B5B]">Cantidad</label>
                                         <input type="number" :id="'cantidad_' + index" v-model="modelo.cantidad" min="1"
                                             class="border border-gray-300 p-2 rounded-md" />

@@ -89,15 +89,15 @@ const limpiar_filtros = () => {
 
     <Head title="Historial de despacho" />
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <h1 class="text-[32px] font-bold text-gray-800">Historial de despachos</h1>
             </div>
-            <div class="flex items-center justify-end gap-4">
-                <div class="flex items-center gap-2">
-                    <div class="relative">
+            <div class="flex items-center lg:justify-end gap-4">
+                <div class="flex flex-col lg:flex-row items-center gap-2 w-full lg:w-auto">
+                    <div class="relative w-full">
                         <input type="text" placeholder="Buscar" @input="handleSearch"
-                            class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-[200px]"
+                            class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-full lg:w-[200px]"
                             style="border-color: #0D509C;" v-model="searchTerm" />
                         <span class="absolute left-3 top-3 text-gray-400">
                             <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
@@ -109,7 +109,7 @@ const limpiar_filtros = () => {
                         </span>
                     </div>
                     <button @click="open_filtros = !open_filtros"
-                        class="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer"
+                        class="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-full w-full lg:w-auto cursor-pointer"
                         style="background-color: #0D509C;">
                         <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path
@@ -160,7 +160,7 @@ const limpiar_filtros = () => {
                 </div>
             </transition>
             <div class="overflow-x-auto mt-4">
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div v-for="despacho in despachos" :key="despacho.id">
                         <div v-if="despacho" @click="abrirDespacho(despacho)"
                             class="min-h-[128px] h-full w-full border border-[#D9D9D9] px-2 py-3 bg-white flex flex-col gap-2 cursor-pointer">
@@ -194,10 +194,10 @@ const limpiar_filtros = () => {
                 </div>
             </div>
             <div v-if="despacho_modal" @click.self="despacho_modal = !despacho_modal;"
-                class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
+                class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
                 style="background-color: rgba(0, 0, 0, 0.5);">
                 <div
-                    class="bg-white rounded-lg p-6 w-[40vw] modal-animation overflow-y-auto max-h-[90vh] min-h-[400px] flex flex-col justify-between">
+                    class="bg-white rounded-lg p-6 lg:w-[40vw] modal-animation overflow-y-auto max-h-[90vh] min-h-[400px] flex flex-col justify-between">
 
                     <div class="flex flex-col gap-6">
                         <div class="flex flex-col justify-between gap-2">

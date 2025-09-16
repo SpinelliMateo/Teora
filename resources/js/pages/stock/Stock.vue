@@ -81,19 +81,19 @@ const handleSearch = () => {
     <Head title="Stock" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <h1 class="text-[32px] font-bold text-gray-800 mt-8">Stock</h1>
-            <div class="flex justify-end items-center mb-8">
-                <div class="flex items-center gap-2">
-                    <div>
-                        <input type="datetime-local" name="fecha_hora" v-model="fecha" @change="handle_fecha" class="border border-[#0D509C] text-[#0D509C] bg-transparent cursor-pointer duration-300 rounded-full py-2 px-4 w-[200px]">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <h1 class="text-[32px] font-bold text-gray-800 lg:mt-8">Stock</h1>
+            <div class="flex justify-end items-center lg:mb-8">
+                <div class="flex flex-col lg:flex-row items-center gap-2 w-full lg:w-auto ">
+                    <div class="w-full lg:w-auto">
+                        <input type="datetime-local" name="fecha_hora" v-model="fecha" @change="handle_fecha" class="border border-[#0D509C] text-[#0D509C] bg-transparent cursor-pointer duration-300 rounded-full py-2 px-4 w-full lg:w-[200px]">
                     </div>
-                    <div class="relative">
+                    <div class="relative w-full lg:w-auto">
                         <input
                             type="text"
                             placeholder="Buscar"
                             @input="handleSearch"
-                            class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-[200px]" style="border-color: #0D509C;"
+                            class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-full lg:w-[200px]" style="border-color: #0D509C;"
                             v-model="searchTerm"
                         />
                         <span class="absolute left-3 top-3 text-gray-400">
@@ -102,7 +102,7 @@ const handleSearch = () => {
                             </svg>
                         </span>
                     </div>
-                    <button @click="open_filtros = !open_filtros" class="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer" style="background-color: #0D509C;">
+                    <button @click="open_filtros = !open_filtros" class="flex items-center justify-center lg:justify-normal gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer w-full lg:w-auto" style="background-color: #0D509C;">
                         <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M7.02076 16C6.73743 16 6.49976 15.904 6.30776 15.712C6.11576 15.52 6.02009 15.2827 6.02076 15V9L0.220761 1.6C-0.0292387 1.26667 -0.0669053 0.916667 0.107761 0.55C0.282428 0.183334 0.586761 0 1.02076 0H15.0208C15.4541 0 15.7584 0.183334 15.9338 0.55C16.1091 0.916667 16.0714 1.26667 15.8208 1.6L10.0208 9V15C10.0208 15.2833 9.92476 15.521 9.73276 15.713C9.54076 15.905 9.30343 16.0007 9.02076 16H7.02076Z" fill="white"/>
                         </svg>

@@ -158,8 +158,8 @@ const delete_problema = () =>{
     <Head title="Stock Detalle" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/configuracion');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z" fill="#626262"/>
@@ -168,8 +168,8 @@ const delete_problema = () =>{
                 <h1 class="text-[32px] font-bold text-gray-800">Problemas y subproblemas de servicios técnicos</h1>
             </div>
             
-            <div class="flex items-center justify-end gap-4">
-                <button @click="modal_create_problema = true;" class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer" style="background-color: #0D509C;">
+            <div class="flex items-center lg:justify-end gap-4">
+                <button @click="modal_create_problema = true;" class="flex items-center justify-center w-full lg:w-[200px] gap-2 px-6 py-2 text-white rounded-full cursor-pointer" style="background-color: #0D509C;">
                     Añadir Problema
                 </button>
             </div>
@@ -186,7 +186,7 @@ const delete_problema = () =>{
                     <tbody class="divide-y divide-gray-200">
                         <tr v-for="(item, index) in problemas" :key="index" class="">
                             <td class="py-3 px-4 text-sm text-left">{{ item.nombre }}</td>
-                            <td class="py-3 px-4 text-sm text-left">
+                            <td class="py-3 px-4 text-sm text-left ">
                                 <span v-for="(sub, index) in item.subproblemas" :key="index">
                                     {{ sub.nombre }}<span v-if="index < item.subproblemas.length - 1">, </span>
                                 </span>

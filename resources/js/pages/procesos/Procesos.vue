@@ -202,55 +202,55 @@ function generarQRDataURLModelo(controlStockId: number): string {
 }
 
 const imprimirEmbalado = async () => {
-  const controlId = serie_seleccionada.value?.control_stock.id;
-  if (!controlId) return;
+    const controlId = serie_seleccionada.value?.control_stock.id;
+    if (!controlId) return;
 
-  try {
-    cargandoImpresion.value = true;
+    try {
+        cargandoImpresion.value = true;
 
-    const response = await fetch('/procesos/imprimir-etiqueta', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement).content
-      },
-      body: JSON.stringify({
-        control_stock_id: controlId,
-        tipo: tipoImpresion.value
-      })
-    });
+        const response = await fetch('/procesos/imprimir-etiqueta', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement).content
+            },
+            body: JSON.stringify({
+                control_stock_id: controlId,
+                tipo: tipoImpresion.value
+            })
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (!data.success) {
-      error(data.message || "Error al generar etiqueta");
-      return;
+        if (!data.success) {
+            error(data.message || "Error al generar etiqueta");
+            return;
+        }
+
+        await imprimirConQZTray(data.zpl);
+        success(data.message || 'Etiquetas impresas correctamente.');
+        modalImpresion.value = false;
+        proceso_modal.value = true;
+    } catch (e) {
+        console.error('Errores de impresión:', e);
+        error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
+    } finally {
+        cargandoImpresion.value = false;
     }
-
-    await imprimirConQZTray(data.zpl);
-    success(data.message || 'Etiquetas impresas correctamente.');
-    modalImpresion.value = false;
-    proceso_modal.value = true;
-  } catch (e) {
-    console.error('Errores de impresión:', e);
-    error('Error inesperado al imprimir. Por favor, intenta nuevamente.');
-  } finally {
-    cargandoImpresion.value = false;
-  }
 };
 
 </script>
 <template>
 
     <Head title="Seguimiento por proceso" />
-    
+
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <h1 class="text-[32px] font-bold text-gray-800">Seguimiento por proceso</h1>
             </div>
 
-            <div class="flex items-center justify-between gap-4">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-5 ml-1">
                     <div class="flex flex-col items-center">
                         <button @click="handle_filtro('EN PROCESO')" class="text-lg  cursor-pointer"
@@ -330,7 +330,7 @@ const imprimirEmbalado = async () => {
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.control_stock.n_serie }}
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.control_stock.modelo.modelo
-                                }}</td>
+                            }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -344,7 +344,7 @@ const imprimirEmbalado = async () => {
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_prearmador?.nombre
-                                }} {{ item.operario_prearmador?.apellido }}</td>
+                            }} {{ item.operario_prearmador?.apellido }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div v-if="item.control_stock.fecha_inyectado" class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -397,7 +397,7 @@ const imprimirEmbalado = async () => {
                                 </div>
                             </td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">{{ item.operario_embalador?.nombre
-                                }} {{ item.operario_embalador?.apellido }}</td>
+                            }} {{ item.operario_embalador?.apellido }}</td>
                             <td class="py-3 px-4 text-sm text-center text-gray-800">
                                 <div v-if="item.control_stock.fecha_salida" class="flex flex-col items-center">
                                     <span class="font-medium">{{ new
@@ -446,190 +446,213 @@ const imprimirEmbalado = async () => {
         </div>
 
         <!-- Modal proceso -->
-        <div v-if="proceso_modal" @click.self="proceso_modal = !proceso_modal;"
+        <div v-if="proceso_modal" @click.self="proceso_modal = false"
             class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
             style="background-color: rgba(0, 0, 0, 0.5);">
-            <div class="bg-white rounded-lg p-6 w-[80vw] modal-animation overflow-y-auto max-h-[90vh] min-h-[442px]">
-                <h2 class="text-xl font-semibold mb-4 text-black">N°{{ (serie_seleccionada as
-                    any)?.control_stock?.n_serie }}
-                </h2>
+            <div
+                class="bg-white rounded-lg p-6 w-[98vw] lg:w-[80vw] modal-animation overflow-y-auto max-h-[90vh] min-h-[442px]">
+                <h2 class="text-xl font-semibold mb-4 text-black">N°{{ serie_seleccionada?.control_stock?.n_serie ||
+                    '12345' }}</h2>
 
                 <div class="w-full">
-                    <div class="flex items-center gap-5">
-                        <div class="w-full flex gap-5 mb-4">
-                            <div class="w-1/4">
+                    <!-- Sección Prearmado -->
+                    <div class="flex lg:items-center flex-col lg:flex-row gap-5">
+                        <div class="w-full flex flex-col lg:flex-row gap-5 mb-4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="fecha_prearmado" class="block text-sm text-[#5B5B5B]">Fecha
                                     Prearmado</label>
                                 <input type="date" id="fecha_prearmado" v-model="form.fecha_prearmado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="hora_prearmado" class="block text-sm text-[#5B5B5B]">Hora Prearmado</label>
                                 <input type="time" id="hora_prearmado" v-model="form.hora_prearmado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="operario_prearmado" class="block text-sm text-[#5B5B5B]">Operario
                                     Prearmado</label>
                                 <select id="operario_prearmado" v-model="form.operario_prearmado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
-                                    <option value="">{{ (serie_seleccionada as any)?.operario_prearmador?.nombre || '-'
-                                    }}
+                                    <option value="">{{ serie_seleccionada?.operario_prearmador?.nombre || '-' }}
                                     </option>
-                                    <option v-for="operario in prearmadores" :key="(operario as any).id"
-                                        :value="(operario as any).id">
-                                        {{ (operario as any).nombre }} {{ (operario as any).apellido }}
+                                    <option v-for="operario in prearmadores" :key="operario.id" :value="operario.id">
+                                        {{ operario.nombre }} {{ operario.apellido }}
                                     </option>
                                 </select>
                             </div>
-                            <div class="w-1/4"></div>
+                            <div class="w-full lg:w-1/4 hidden lg:block"></div>
                         </div>
-                        <button class="cursor-pointer hover:opacity-70" @click="abrirModalImpresion('prearmado')">
-                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M15 4H13V0H5V4H3C1.34 4 0 5.34 0 7V12H3V18H15V12H18V7C18 5.34 16.66 4 15 4ZM7 2H11V4H7V2ZM13 16H5V11H13V16ZM15 9C14.45 9 14 8.55 14 8C14 7.45 14.45 7 15 7C15.55 7 16 7.45 16 8C16 8.55 15.55 9 15 9Z"
-                                    fill="#0D509C" />
-                            </svg>
-                        </button>
-                        <button class="cursor-pointer"
-                            @click="form.fecha_prearmado = ''; form.hora_prearmado = ''; form.operario_prearmado = null;">
-                            <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
-                                    fill="#0D509C" />
-                            </svg>
-                        </button>
+
+                        <!-- Botones de acción para Prearmado -->
+                        <div class="flex justify-end lg:justify-start gap-2 lg:gap-0">
+                            <button class="cursor-pointer hover:opacity-70 hidden lg:block"
+                                @click="abrirModalImpresion('prearmado')">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M15 4H13V0H5V4H3C1.34 4 0 5.34 0 7V12H3V18H15V12H18V7C18 5.34 16.66 4 15 4ZM7 2H11V4H7V2ZM13 16H5V11H13V16ZM15 9C14.45 9 14 8.55 14 8C14 7.45 14.45 7 15 7C15.55 7 16 7.45 16 8C16 8.55 15.55 9 15 9Z"
+                                        fill="#0D509C" />
+                                </svg>
+                            </button>
+                            <button class="cursor-pointer lg:ml-2"
+                                @click="form.fecha_prearmado = ''; form.hora_prearmado = ''; form.operario_prearmado = null;">
+                                <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
+                                        fill="#0D509C" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-5">
-                        <div class="w-full flex gap-5 mb-4">
-                            <div class="w-1/4">
+
+                    <!-- Sección Inyectado -->
+                    <div class="flex lg:items-center flex-col lg:flex-row gap-5">
+                        <div class="w-full flex flex-col lg:flex-row gap-5 mb-4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="fecha_inyectado" class="block text-sm text-[#5B5B5B]">Fecha
                                     Inyectado</label>
                                 <input type="date" id="fecha_inyectado" v-model="form.fecha_inyectado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="hora_inyectado" class="block text-sm text-[#5B5B5B]">Hora Inyectado</label>
                                 <input type="time" id="hora_inyectado" v-model="form.hora_inyectado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4"></div>
-                            <div class="w-1/4"></div>
+                            <div class="w-full lg:w-1/4 hidden lg:block"></div>
+                            <div class="w-full lg:w-1/4 hidden lg:block"></div>
                         </div>
-                        <div class="w-4.5"></div>
-                        <button class="cursor-pointer" @click="form.fecha_inyectado = ''; form.hora_inyectado = '';">
-                            <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
-                                    fill="#0D509C" />
-                            </svg>
-                        </button>
+
+                        <div class="flex justify-end lg:justify-start">
+                            <div class="hidden lg:block lg:w-4.5"></div>
+                            <button class="cursor-pointer"
+                                @click="form.fecha_inyectado = ''; form.hora_inyectado = '';">
+                                <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
+                                        fill="#0D509C" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex items-center gap-5">
-                        <div class="w-full flex gap-5 mb-4">
-                            <div class="w-1/4">
+                    <!-- Sección Armado -->
+                    <div class="flex lg:items-center flex-col lg:flex-row gap-5">
+                        <div class="w-full flex flex-col lg:flex-row gap-5 mb-4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="fecha_armado" class="block text-sm text-[#5B5B5B]">Fecha Armado</label>
                                 <input type="date" id="fecha_armado" v-model="form.fecha_armado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="hora_armado" class="block text-sm text-[#5B5B5B]">Hora Armado</label>
                                 <input type="time" id="hora_armado" v-model="form.hora_armado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="operario_armado" class="block text-sm text-[#5B5B5B]">Operario
                                     Armado</label>
                                 <select id="operario_armado" v-model="form.operario_armado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
-                                    <option value="">{{ (serie_seleccionada as any)?.operario_armador?.nombre || '-' }}
-                                    </option>
-                                    <option v-for="operario in armadores" :key="(operario as any).id"
-                                        :value="(operario as any).id">
-                                        {{ (operario as any).nombre }} {{ (operario as any).apellido }}
+                                    <option value="">{{ serie_seleccionada?.operario_armador?.nombre || '-' }}</option>
+                                    <option v-for="operario in armadores" :key="operario.id" :value="operario.id">
+                                        {{ operario.nombre }} {{ operario.apellido }}
                                     </option>
                                 </select>
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="numero_motor" class="block text-sm text-[#5B5B5B]">N° motor</label>
                                 <input type="text" id="numero_motor" v-model="form.numero_motor"
-                                    :placeholder="(serie_seleccionada as any)?.control_stock?.equipo && (serie_seleccionada as any).control_stock.equipo !== '0' ? (serie_seleccionada as any).control_stock.equipo : '-'"
+                                    :placeholder="serie_seleccionada?.control_stock?.equipo && serie_seleccionada.control_stock.equipo !== '0' ? serie_seleccionada.control_stock.equipo : '-'"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
                         </div>
-                        <div class="w-4.5"></div>
-                        <button class="cursor-pointer"
-                            @click="form.fecha_armado = ''; form.hora_armado = ''; form.operario_armado = null; form.numero_motor = '';">
-                            <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
-                                    fill="#0D509C" />
-                            </svg>
-                        </button>
+
+                        <div class="flex justify-end lg:justify-start">
+                            <div class="hidden lg:block lg:w-4.5"></div>
+                            <button class="cursor-pointer"
+                                @click="form.fecha_armado = ''; form.hora_armado = ''; form.operario_armado = null; form.numero_motor = '';">
+                                <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
+                                        fill="#0D509C" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-5">
-                        <div class="w-full flex gap-5 mb-4">
-                            <div class="w-1/4">
+
+                    <!-- Sección Embalado -->
+                    <div class="flex lg:items-center flex-col lg:flex-row gap-5">
+                        <div class="w-full flex flex-col lg:flex-row gap-5 mb-4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="fecha_embalado" class="block text-sm text-[#5B5B5B]">Fecha Embalado</label>
                                 <input type="date" id="fecha_embalado" v-model="form.fecha_embalado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="hora_embalado" class="block text-sm text-[#5B5B5B]">Hora Embalado</label>
                                 <input type="time" id="hora_embalado" v-model="form.hora_embalado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                             </div>
-                            <div class="w-1/4">
+                            <div class="w-full lg:w-1/4">
                                 <label for="operario_embalado" class="block text-sm text-[#5B5B5B]">Operario
                                     Embalado</label>
                                 <select id="operario_embalado" v-model="form.operario_embalado"
                                     class="mt-1 p-2 w-full border border-gray-300 rounded-md">
-                                    <option value="">{{ (serie_seleccionada as any)?.operario_embalador?.nombre || '-'
-                                        }}
+                                    <option value="">{{ serie_seleccionada?.operario_embalador?.nombre || '-' }}
                                     </option>
-                                    <option v-for="operario in embaladores" :key="(operario as any).id"
-                                        :value="(operario as any).id">
-                                        {{ (operario as any).nombre }} {{ (operario as any).apellido }}
+                                    <option v-for="operario in embaladores" :key="operario.id" :value="operario.id">
+                                        {{ operario.nombre }} {{ operario.apellido }}
                                     </option>
                                 </select>
                             </div>
-                            <div class="w-1/4"></div>
+                            <div class="w-full lg:w-1/4 hidden lg:block"></div>
                         </div>
-                        <button class="cursor-pointer hover:opacity-70" @click="abrirModalImpresion('embalado')">
-                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M15 4H13V0H5V4H3C1.34 4 0 5.34 0 7V12H3V18H15V12H18V7C18 5.34 16.66 4 15 4ZM7 2H11V4H7V2ZM13 16H5V11H13V16ZM15 9C14.45 9 14 8.55 14 8C14 7.45 14.45 7 15 7C15.55 7 16 7.45 16 8C16 8.55 15.55 9 15 9Z"
-                                    fill="#0D509C" />
-                            </svg>
-                        </button>
-                        <button class="cursor-pointer"
-                            @click="form.fecha_embalado = ''; form.hora_embalado = ''; form.operario_embalado = null;">
-                            <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
-                                    fill="#0D509C" />
-                            </svg>
-                        </button>
+
+                        <!-- Botones de acción para Embalado -->
+                        <div class="flex justify-end lg:justify-start gap-2 lg:gap-0">
+                            <button class="cursor-pointer hover:opacity-70 hidden lg:block"
+                                @click="abrirModalImpresion('embalado')">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M15 4H13V0H5V4H3C1.34 4 0 5.34 0 7V12H3V18H15V12H18V7C18 5.34 16.66 4 15 4ZM7 2H11V4H7V2ZM13 16H5V11H13V16ZM15 9C14.45 9 14 8.55 14 8C14 7.45 14.45 7 15 7C15.55 7 16 7.45 16 8C16 8.55 15.55 9 15 9Z"
+                                        fill="#0D509C" />
+                                </svg>
+                            </button>
+                            <button class="cursor-pointer lg:ml-2"
+                                @click="form.fecha_embalado = ''; form.hora_embalado = ''; form.operario_embalado = null;">
+                                <svg width="14" height="18" viewBox="0 0 14 18" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M1 16C1 16.5304 1.21071 17.0391 1.58579 17.4142C1.96086 17.7893 2.46957 18 3 18H11C11.5304 18 12.0391 17.7893 12.4142 17.4142C12.7893 17.0391 13 16.5304 13 16V4H1V16ZM3 6H11V16H3V6ZM10.5 1L9.5 0H4.5L3.5 1H0V3H14V1H10.5Z"
+                                        fill="#0D509C" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex items-center justify-between gap-3 mt-4 mr-9">
-                        <div class="flex justify-end space-x-2">
-                            <button @click="proceso_modal = !proceso_modal;"
-                                class="w-[150px] py-2 bg-white text-[#0D509C] rounded-full hover:shadow-lg duration-300 cursor-pointer flex justify-center border border-[#0D509C]">Volver</button>
+                    <!-- Botones principales -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 lg:mr-9">
+                        <div class="flex justify-end space-x-2 w-full sm:w-auto order-2 sm:order-1">
+                            <button @click="proceso_modal = false"
+                                class="w-full sm:w-[150px] py-2 bg-white text-[#0D509C] rounded-full hover:shadow-lg duration-300 cursor-pointer flex justify-center border border-[#0D509C]">
+                                Volver
+                            </button>
                         </div>
-                        <div v-if="!loading_proceso" class="flex justify-end space-x-2">
+                        <div v-if="!loading_proceso"
+                            class="flex justify-end space-x-2 w-full sm:w-auto order-1 sm:order-2">
                             <button @click="update_proceso"
-                                class="w-[150px] py-2 bg-[#0D509C] text-white rounded-full hover:shadow-lg duration-300 cursor-pointer flex justify-center">Guardar</button>
+                                class="w-full sm:w-[150px] py-2 bg-[#0D509C] text-white rounded-full hover:shadow-lg duration-300 cursor-pointer flex justify-center">
+                                Guardar
+                            </button>
                         </div>
                         <button v-if="loading_proceso"
-                            class="w-[150px] py-2 bg-[#0D509C] text-white rounded-full disabled:opacity-50 hover:shadow-lg duration-300 disabled:cursor-not-allowed cursor-pointer flex justify-center">
+                            class="w-full sm:w-[150px] py-2 bg-[#0D509C] text-white rounded-full disabled:opacity-50 hover:shadow-lg duration-300 disabled:cursor-not-allowed cursor-pointer flex justify-center order-1 sm:order-2">
                             <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
                                 <radialGradient id="a12" cx=".66" fx=".66" cy=".3125" fy=".3125"
                                     gradientTransform="scale(1.5)">
@@ -654,6 +677,7 @@ const imprimirEmbalado = async () => {
                 </div>
             </div>
         </div>
+        
         <div v-if="modalImpresion" class="fixed inset-0 flex items-center justify-center h-full w-full">
             <div class="fixed inset-0 bg-black opacity-50 z-1"></div>
             <div class="bg-white modal-animation rounded-lg shadow-xl max-w-3xl w-full py-3 z-50 max-h-[90vh] relative">
@@ -714,7 +738,7 @@ const imprimirEmbalado = async () => {
                                 <div class="border border-gray-300 rounded bg-white px-3 py-2">
                                     <span class="text-sm font-medium text-gray-900">{{
                                         serie_seleccionada?.control_stock.n_serie
-                                    }}</span>
+                                        }}</span>
                                 </div>
                             </div>
 
@@ -724,7 +748,7 @@ const imprimirEmbalado = async () => {
                                 <div class="border border-gray-300 rounded bg-white px-3 py-2">
                                     <span class="text-sm text-gray-900">{{
                                         serie_seleccionada?.control_stock.modelo.nombre_modelo
-                                    }}</span>
+                                        }}</span>
                                 </div>
                             </div>
                         </div>

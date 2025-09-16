@@ -229,8 +229,8 @@ const editarUsuario = () => {
     <Head title="Usuarios" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/configuracion');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z"
@@ -240,10 +240,10 @@ const editarUsuario = () => {
                 <h1 class="text-[32px] font-bold text-gray-800">Usuarios</h1>
             </div>
 
-            <div class="flex justify-end items-center gap-2">
-                <div class="relative">
+            <div class="flex flex-col lg:flex-row justify-end items-center gap-2">
+                <div class="relative w-full">
                     <input type="text" placeholder="Buscar" @input="handleSearch"
-                        class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-[200px]"
+                        class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-full lg:w-[200px]"
                         style="border-color: #0D509C;" v-model="searchTerm" />
                     <span class="absolute left-3 top-3 text-gray-400">
                         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -254,12 +254,12 @@ const editarUsuario = () => {
                     </span>
                 </div>
                 <button @click="modal_create_usuario = true"
-                    class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
+                    class="flex items-center text-center justify-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer w-full lg:w-[180px]"
                     style="background-color: #0D509C;">
                     Añadir Usuario
                 </button>
             </div>
-            <div>
+            <div class="w-full overflow-x-auto">
                 <table class="w-full bg-white overflow-hidden">
                     <thead class="bg-[#E1E5E9]">
                         <tr>
@@ -309,7 +309,7 @@ const editarUsuario = () => {
     </AppLayout>
     <!-- Modal Crear Usuario -->
     <div v-if="modal_create_usuario" @click.self="modal_create_usuario = false; resetCrearUsuario();"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
+        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
         style="background-color: rgba(0, 0, 0, 0.5);">
         <div class="w-[900px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
             <div class="flex justify-between items-center mb-4">
@@ -372,7 +372,7 @@ const editarUsuario = () => {
     </div>
     <!-- Modal Eliminar Usuario -->
     <div v-if="modal_delete_usuario" @click.self="cerrarModalEliminar"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
+        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
         style="background-color: rgba(0,0,0,0.5);">
         <div class="w-[500px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
             <h2 class="text-lg text-center font-semibold text-gray-800 mb-4">¿Estás seguro de eliminar el usuario <span
@@ -408,7 +408,7 @@ const editarUsuario = () => {
     </div>
     <!-- Modal Editar Usuario -->
     <div v-if="modal_edit_usuario" @click.self="cerrarModalEditar"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
+        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
         style="background-color: rgba(0, 0, 0, 0.5);">
         <div class="w-[900px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
             <div class="flex justify-between items-center mb-4">

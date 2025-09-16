@@ -269,8 +269,8 @@ onMounted(async () => {
     <Head title="Reportes" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <h1 class="text-[32px] font-bold text-gray-800">Reportes</h1>
             </div>
 
@@ -279,7 +279,7 @@ onMounted(async () => {
                 <div>
                     <h2 class="text-black font-bold text-xl">Filtrar por</h2>
                 </div>
-                <div class="grid grid-cols-4 gap-6">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="flex flex-col gap-1.5">
                         <label for="modelo" class="text-[#5B5B5B] text-sm">Modelo</label>
                         <select name="modelo" id="modelo" v-model="selectedModelo"
@@ -312,7 +312,7 @@ onMounted(async () => {
                             class="border border-gray-200 py-2.5 px-3 rounded-md" />
                     </div>
                     <div class="flex flex-col gap-1.5">
-                        <label for="tecnico" class="text-[#5B5B5B] text-sm">Técnico</label>
+                        <label for="tecnico" class="text-[#5B5B5B] text-sm h-10">Técnico</label>
                         <select name="tecnico" id="tecnico" v-model="selectedTecnico" @change="onServiciosFiltroChange"
                             :disabled="tecnicoProblemaSubproblemaDisabled"
                             class="border border-gray-200 py-2.5 px-3 rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed">
@@ -345,10 +345,10 @@ onMounted(async () => {
                             </option>
                         </select>
                     </div>
-                    <div class="flex flex-col gap-1.5 items-end">
+                    <div class="flex flex-col justify-end lg:justify-normal gap-1.5 items-end">
                         <label class="text-[#5B5B5B] text-sm">&nbsp;</label>
                         <button @click="limpiarFiltros"
-                            class="bg-[#0D509C] text-white px-4 py-2 rounded-full w-[173px] cursor-pointer">
+                            class="bg-[#0D509C] text-white px-4 py-2 rounded-full lg:w-[173px] cursor-pointer">
                             Limpiar Filtros
                         </button>
                     </div>

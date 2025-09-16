@@ -218,14 +218,14 @@ function closeModal() {
   <Head title="Órdenes de fabricación" />
 
   <AppLayout>
-    <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-      <h1 class="text-[32px] font-bold text-gray-800 mt-8">Órdenes de fabricación</h1>
+    <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+      <h1 class="text-[32px] font-bold text-gray-800 lg:mt-8">Órdenes de fabricación</h1>
 
       <div class="flex justify-end items-center mb-8">
-        <div class="flex gap-2">
-          <div class="relative">
+        <div class="flex flex-col w-full lg:w-auto lg:flex-row gap-2">
+          <div class="relative w-full lg:w-auto">
             <input type="text" placeholder="Buscar por Nº Orden"
-              class="px-10 py-2 border rounded-full focus:outline-none text-black placeholder-blue-800 w-[200px]"
+              class="px-10 py-2 border rounded-full focus:outline-none text-black placeholder-blue-800 w-full lg:w-[230px]"
               style="border-color: #0D509C;" v-model="filtroNoOrden" />
             <span class="absolute left-3 top-3 text-gray-400">
               <!-- ícono búsqueda -->
@@ -238,7 +238,7 @@ function closeModal() {
           </div>
 
           <button @click="open_filtros = !open_filtros"
-            class="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer"
+            class="flex items-center justify-center lg:justify-normal gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer"
             style="background-color: #0D509C;">
             <!-- ícono filtro -->
             <svg width="17" height="16" viewBox="0 0 17 16" fill="none">
@@ -250,7 +250,7 @@ function closeModal() {
           </button>
 
           <button @click="openModal"
-            class="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer"
+            class="flex items-center justify-center lg:justify-normal gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer"
             style="background-color: #0D509C;">
             Añadir OF
           </button>
