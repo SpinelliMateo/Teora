@@ -73,27 +73,23 @@ class RemitoRepository implements RemitoRepositoryInterface
             $remito = Remito::find($remitoId);
 
             foreach ($remito->modelos as $modelo) {
-                // Cantidad que necesita este remito de este modelo
                 $cantidadNecesaria = $modelo->pivot->cantidad;
 
-                // Cantidad ya asignada en control_remito
                 $asignadas = ControlRemito::where('remito_id', $remito->id)
                     ->whereHas('controlStock', function ($q) use ($modelo) {
                         $q->where('modelo_id', $modelo->id);
                     })
                     ->count();
 
-                // Calcular cuántas faltan
                 $faltan = $cantidadNecesaria - $asignadas;
 
                 if ($faltan <= 0) {
-                    continue; // ya está completo
+                    continue;
                 }
 
-                // Buscar series disponibles y asignarlas
                 foreach ($series as $key => $serie) {
                     if ($faltan === 0) {
-                        break; // ya asignamos las necesarias
+                        break;
                     }
 
                     if ($serie->modelo_id === $modelo->id) {

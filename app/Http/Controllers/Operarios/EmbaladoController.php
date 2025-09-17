@@ -138,12 +138,11 @@ class EmbaladoController extends Controller
                     'message' => 'No se encontraron productos embalados válidos para reimprimir.'
                 ], 404);
             }
-
             $zpls = [];
             foreach ($productos as $controlStock) {
                 $zpls[] = $this->construirTemplateZPL($controlStock);
             }
-
+            
             return response()->json([
                 'success' => true,
                 'message' => 'Etiquetas generadas correctamente',
@@ -160,7 +159,7 @@ class EmbaladoController extends Controller
     }
     private function construirTemplateZPL(array $controlStock)
     {
-        $ingreso = \Carbon\Carbon::parse($controlStock['fecha_embalado'])->format('d-m-Y');
+        $ingreso = \Carbon\Carbon::createFromFormat('d/m/Y H:i', $controlStock['fecha_embalado'])->format('d-m-Y');
         $serie = $controlStock['n_serie'];
         $modelo = $controlStock['modelo']['modelo_nombre'];
 
