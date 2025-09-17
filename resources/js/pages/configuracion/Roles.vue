@@ -281,153 +281,12 @@ const eliminarRol = () => {
 
 
 <template>
-    <!-- Modal Crear Rol -->
-    <div v-if="modal_create_rol" @click.self="modal_create_rol = false; resetCrearRol();"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
-        style="background-color: rgba(0, 0, 0, 0.5);">
-        <div class="w-[900px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold text-black">Nuevo Rol</h2>
-            </div>
-            <div class="mb-6">
-                <label class="block font-medium text-lg text-[#5B5B5B]">Nombre del rol</label>
-                <input v-model="rol_nombre" type="text" class="w-full border rounded px-3 py-2 mt-2"
-                    placeholder="Nombre" />
-            </div>
-            <div class="mb-6">
-                <label class="block font-medium text-[#5B5B5B]">Permisos</label>
-                <div class="grid grid-cols-2 gap-4 mt-2">
-                    <div v-for="seccion in secciones" :key="seccion.label" class="border-b pb-4 mb-4">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox"
-                                :checked="seccion.subdivide ? permisos_seleccionados.includes(seccion.label) : permisos_seleccionados.includes(seccion.permisos[0])"
-                                @change="handleSeccionChange(seccion)" :id="'seccion-' + seccion.label"
-                                class="accent-[#0D509C]" />
-                            <label :for="'seccion-' + seccion.label" class="text-lg">{{ seccion.label }}</label>
-                        </div>
-                        <transition name="fade">
-                            <div v-if="seccion.subdivide && permisos_seleccionados.includes(seccion.label)"
-                                class="ml-6 mt-2 flex gap-4">
-                                <div v-for="permiso in seccion.permisos" :key="permiso" class="flex items-center gap-2">
-                                    <input type="checkbox"
-                                        :checked="subpermisos_seleccionados[seccion.label]?.includes(permiso)"
-                                        @change="handleSubpermisoChange(seccion.label, permiso)"
-                                        :id="'subpermiso-' + seccion.label + '-' + permiso"
-                                        class="rounded-full accent-[#0D509C]" />
-                                    <label :for="'subpermiso-' + seccion.label + '-' + permiso">{{
-                                        permiso.charAt(0).toUpperCase() + permiso.slice(1) }}</label>
-                                </div>
-                            </div>
-                        </transition>
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end pt-4">
-                <button @click="guardarRol" :disabled="loading_create_rol"
-                    class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
-                    style="background-color: #0D509C;">
-                    <span v-if="!loading_create_rol">Guardar rol</span>
-                    <span v-else>Guardando...</span>
-                </button>
-            </div>
-        </div>
-    </div>
-    <!-- Modal Editar Rol -->
-    <div v-if="modal_edit_rol" @click.self="cerrarModalEditar"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
-        style="background-color: rgba(0,0,0,0.5);">
-        <div class="w-[900px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold text-black">Editar Rol</h2>
-            </div>
-            <div class="mb-6">
-                <label class="block font-medium text-lg text-[#5B5B5B]">Nombre del rol</label>
-                <input v-model="rol_nombre" type="text" class="w-full border rounded px-3 py-2 mt-2"
-                    placeholder="Nombre" />
-            </div>
-            <div class="mb-6">
-                <label class="block font-medium text-[#5B5B5B]">Permisos</label>
-                <div class="grid grid-cols-2 gap-4 mt-2">
-                    <div v-for="seccion in secciones" :key="seccion.label" class="border-b pb-4 mb-4">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox"
-                                :checked="seccion.subdivide ? permisos_seleccionados.includes(seccion.label) : permisos_seleccionados.includes(seccion.permisos[0])"
-                                @change="handleSeccionChange(seccion)" :id="'edit-seccion-' + seccion.label"
-                                class="accent-[#0D509C]" />
-                            <label :for="'edit-seccion-' + seccion.label" class="text-lg">{{ seccion.label }}</label>
-                        </div>
-                        <transition name="fade-height">
-                            <div v-if="seccion.subdivide && permisos_seleccionados.includes(seccion.label)"
-                                class="ml-6 mt-2 flex gap-4 overflow-hidden">
-                                <div v-for="permiso in seccion.permisos" :key="permiso" class="flex items-center gap-2">
-                                    <input type="checkbox"
-                                        :checked="subpermisos_seleccionados[seccion.label]?.includes(permiso)"
-                                        @change="handleSubpermisoChange(seccion.label, permiso)"
-                                        :id="'edit-subpermiso-' + seccion.label + '-' + permiso"
-                                        class="rounded-full accent-[#0D509C]" />
-                                    <label :for="'edit-subpermiso-' + seccion.label + '-' + permiso">{{
-                                        permiso.charAt(0).toUpperCase() + permiso.slice(1) }}</label>
-                                </div>
-                            </div>
-                        </transition>
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end pt-4 gap-4">
-                <button @click="cerrarModalEditar"
-                    class="px-6 py-2 border border-[#0D509C] text-[#0D509C] rounded-full cursor-pointer">Cancelar</button>
-                <button @click="guardarEdicionRol" :disabled="loading_edit_rol"
-                    class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
-                    style="background-color: #0D509C;">
-                    <span v-if="!loading_edit_rol">Guardar</span>
-                    <span v-else>Guardando...</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Eliminar Rol -->
-    <div v-if="modal_delete_rol" @click.self="cerrarModalEliminar"
-        class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50"
-        style="background-color: rgba(0,0,0,0.5);">
-        <div class="w-[400px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">¿Estás seguro de eliminar el rol <span
-                    class="font-bold">{{ rol_eliminando?.name }}</span>?</h2>
-            <div class="flex justify-between gap-4">
-                <button @click="cerrarModalEliminar"
-                    class="w-[173px] py-2 bg-gray-200 text-gray-800 rounded-full cursor-pointer hover:shadow-md duration-300">Cancelar</button>
-                <button v-if="!loading_delete_rol" @click="eliminarRol"
-                    class="w-[173px] py-2 bg-[#0D509C] text-white rounded-full disabled:opacity-50 hover:shadow-lg duration-300 disabled:cursor-not-allowed cursor-pointer">Eliminar</button>
-                <button v-if="loading_delete_rol"
-                    class="w-[173px] py-2 bg-[#0D509C] text-white rounded-full flex justify-center">
-                    <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-                        <radialGradient id="a12" cx=".66" fx=".66" cy=".3125" fy=".3125" gradientTransform="scale(1.5)">
-                            <stop offset="0" stop-color="#FFFFFF"></stop>
-                            <stop offset=".3" stop-color="#FFFFFF" stop-opacity=".9"></stop>
-                            <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".6"></stop>
-                            <stop offset=".8" stop-color="#FFFFFF" stop-opacity=".3"></stop>
-                            <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
-                        </radialGradient>
-                        <circle transform-origin="center" fill="none" stroke="url(#a12)" stroke-width="15"
-                            stroke-linecap="round" stroke-dasharray="200 1000" stroke-dashoffset="0" cx="100" cy="100"
-                            r="70">
-                            <animateTransform type="rotate" attributeName="transform" calcMode="spline" dur="2"
-                                values="360;0" keyTimes="0;1" keySplines="0 0 1 1" repeatCount="indefinite">
-                            </animateTransform>
-                        </circle>
-                        <circle transform-origin="center" fill="none" opacity=".2" stroke="#FFFFFF" stroke-width="15"
-                            stroke-linecap="round" cx="100" cy="100" r="70"></circle>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
 
     <Head title="Roles" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/configuracion');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z"
@@ -439,7 +298,7 @@ const eliminarRol = () => {
 
             <div class="flex justify-end items-center ">
                 <button @click="modal_create_rol = true"
-                    class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
+                    class="flex items-center justify-center w-full lg:w-[180px] gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
                     style="background-color: #0D509C;">
                     Añadir Rol
                 </button>
@@ -447,8 +306,8 @@ const eliminarRol = () => {
 
             <div class="flex flex-col gap-6">
                 <template v-for="rol in props.roles">
-                    <div class="flex items-center justify-between bg-white p-4 rounded-lg shadow-md">
-                        <div class="flex flex-col gap-1">
+                    <div class="flex flex-col lg:flex-row items-center justify-between bg-white p-4 rounded-lg shadow-md">
+                        <div class="flex flex-col gap-1 w-full">
                             <h2>{{ rol.name.charAt(0).toUpperCase() + rol.name.slice(1) }}</h2>
                             <div class="flex items-center gap-1 flex-wrap">
                                 <span v-for="(permiso, index) in rol.permissions" :key="permiso.id"
@@ -482,6 +341,154 @@ const eliminarRol = () => {
                 </template>
             </div>
         </div>
+
+        <!-- Modal Crear Rol -->
+        <div v-if="modal_create_rol" @click.self="modal_create_rol = false; resetCrearRol();"
+            class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
+            style="background-color: rgba(0, 0, 0, 0.5);">
+            <div class="w-[900px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-black">Nuevo Rol</h2>
+                </div>
+                <div class="mb-6">
+                    <label class="block font-medium text-lg text-[#5B5B5B]">Nombre del rol</label>
+                    <input v-model="rol_nombre" type="text" class="w-full border rounded px-3 py-2 mt-2"
+                        placeholder="Nombre" />
+                </div>
+                <div class="mb-6">
+                    <label class="block font-medium text-[#5B5B5B]">Permisos</label>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div v-for="seccion in secciones" :key="seccion.label" class="border-b pb-4 mb-4">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox"
+                                    :checked="seccion.subdivide ? permisos_seleccionados.includes(seccion.label) : permisos_seleccionados.includes(seccion.permisos[0])"
+                                    @change="handleSeccionChange(seccion)" :id="'seccion-' + seccion.label"
+                                    class="accent-[#0D509C]" />
+                                <label :for="'seccion-' + seccion.label" class="text-lg">{{ seccion.label }}</label>
+                            </div>
+                            <transition name="fade">
+                                <div v-if="seccion.subdivide && permisos_seleccionados.includes(seccion.label)"
+                                    class="ml-6 mt-2 flex gap-4">
+                                    <div v-for="permiso in seccion.permisos" :key="permiso"
+                                        class="flex items-center gap-2">
+                                        <input type="checkbox"
+                                            :checked="subpermisos_seleccionados[seccion.label]?.includes(permiso)"
+                                            @change="handleSubpermisoChange(seccion.label, permiso)"
+                                            :id="'subpermiso-' + seccion.label + '-' + permiso"
+                                            class="rounded-full accent-[#0D509C]" />
+                                        <label :for="'subpermiso-' + seccion.label + '-' + permiso">{{
+                                            permiso.charAt(0).toUpperCase() + permiso.slice(1) }}</label>
+                                    </div>
+                                </div>
+                            </transition>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button @click="guardarRol" :disabled="loading_create_rol"
+                        class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
+                        style="background-color: #0D509C;">
+                        <span v-if="!loading_create_rol">Guardar rol</span>
+                        <span v-else>Guardando...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Modal Editar Rol -->
+        <div v-if="modal_edit_rol" @click.self="cerrarModalEditar"
+            class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
+            style="background-color: rgba(0,0,0,0.5);">
+            <div class="w-[900px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-black">Editar Rol</h2>
+                </div>
+                <div class="mb-6">
+                    <label class="block font-medium text-lg text-[#5B5B5B]">Nombre del rol</label>
+                    <input v-model="rol_nombre" type="text" class="w-full border rounded px-3 py-2 mt-2"
+                        placeholder="Nombre" />
+                </div>
+                <div class="mb-6">
+                    <label class="block font-medium text-[#5B5B5B]">Permisos</label>
+                    <div class="grid grid-cols-2 gap-4 mt-2">
+                        <div v-for="seccion in secciones" :key="seccion.label" class="border-b pb-4 mb-4">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox"
+                                    :checked="seccion.subdivide ? permisos_seleccionados.includes(seccion.label) : permisos_seleccionados.includes(seccion.permisos[0])"
+                                    @change="handleSeccionChange(seccion)" :id="'edit-seccion-' + seccion.label"
+                                    class="accent-[#0D509C]" />
+                                <label :for="'edit-seccion-' + seccion.label" class="text-lg">{{ seccion.label
+                                    }}</label>
+                            </div>
+                            <transition name="fade-height">
+                                <div v-if="seccion.subdivide && permisos_seleccionados.includes(seccion.label)"
+                                    class="ml-6 mt-2 flex gap-4 overflow-hidden">
+                                    <div v-for="permiso in seccion.permisos" :key="permiso"
+                                        class="flex items-center gap-2">
+                                        <input type="checkbox"
+                                            :checked="subpermisos_seleccionados[seccion.label]?.includes(permiso)"
+                                            @change="handleSubpermisoChange(seccion.label, permiso)"
+                                            :id="'edit-subpermiso-' + seccion.label + '-' + permiso"
+                                            class="rounded-full accent-[#0D509C]" />
+                                        <label :for="'edit-subpermiso-' + seccion.label + '-' + permiso">{{
+                                            permiso.charAt(0).toUpperCase() + permiso.slice(1) }}</label>
+                                    </div>
+                                </div>
+                            </transition>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-4 gap-4">
+                    <button @click="cerrarModalEditar"
+                        class="px-6 py-2 border border-[#0D509C] text-[#0D509C] rounded-full cursor-pointer">Cancelar</button>
+                    <button @click="guardarEdicionRol" :disabled="loading_edit_rol"
+                        class="flex items-center gap-2 px-6 py-2 text-white rounded-full cursor-pointer"
+                        style="background-color: #0D509C;">
+                        <span v-if="!loading_edit_rol">Guardar</span>
+                        <span v-else>Guardando...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Eliminar Rol -->
+        <div v-if="modal_delete_rol" @click.self="cerrarModalEliminar"
+            class="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50 px-2 lg:px-0"
+            style="background-color: rgba(0,0,0,0.5);">
+            <div class="w-[400px] bg-white rounded-lg p-6 max-h-[90vh] overflow-y-auto modal-animation">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">¿Estás seguro de eliminar el rol <span
+                        class="font-bold">{{
+                        rol_eliminando?.name }}</span>?</h2>
+                <div class="flex justify-between gap-4">
+                    <button @click="cerrarModalEliminar"
+                        class="w-[173px] py-2 bg-gray-200 text-gray-800 rounded-full cursor-pointer hover:shadow-md duration-300">Cancelar</button>
+                    <button v-if="!loading_delete_rol" @click="eliminarRol"
+                        class="w-[173px] py-2 bg-[#0D509C] text-white rounded-full disabled:opacity-50 hover:shadow-lg duration-300 disabled:cursor-not-allowed cursor-pointer">Eliminar</button>
+                    <button v-if="loading_delete_rol"
+                        class="w-[173px] py-2 bg-[#0D509C] text-white rounded-full flex justify-center">
+                        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+                            <radialGradient id="a12" cx=".66" fx=".66" cy=".3125" fy=".3125"
+                                gradientTransform="scale(1.5)">
+                                <stop offset="0" stop-color="#FFFFFF"></stop>
+                                <stop offset=".3" stop-color="#FFFFFF" stop-opacity=".9"></stop>
+                                <stop offset=".6" stop-color="#FFFFFF" stop-opacity=".6"></stop>
+                                <stop offset=".8" stop-color="#FFFFFF" stop-opacity=".3"></stop>
+                                <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
+                            </radialGradient>
+                            <circle transform-origin="center" fill="none" stroke="url(#a12)" stroke-width="15"
+                                stroke-linecap="round" stroke-dasharray="200 1000" stroke-dashoffset="0" cx="100"
+                                cy="100" r="70">
+                                <animateTransform type="rotate" attributeName="transform" calcMode="spline" dur="2"
+                                    values="360;0" keyTimes="0;1" keySplines="0 0 1 1" repeatCount="indefinite">
+                                </animateTransform>
+                            </circle>
+                            <circle transform-origin="center" fill="none" opacity=".2" stroke="#FFFFFF"
+                                stroke-width="15" stroke-linecap="round" cx="100" cy="100" r="70"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </AppLayout>
 
 </template>

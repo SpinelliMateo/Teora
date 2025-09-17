@@ -366,8 +366,8 @@ const get_subproblemas_by_id = async () => {
     <Head title="Servicio técnico Detalle" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/servicio-tecnico');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z"
@@ -394,7 +394,7 @@ const get_subproblemas_by_id = async () => {
 
 
             <div class="mt-4 bg-white p-6 rounded-md">
-                <div class="flex items-center gap-6 mb-5">
+                <div class="grid grid-cols-2 lg:grid-cols-4 items-center gap-6 mb-5">
                     <div class="flex-1">
                         <label for="id" class="block text-sm text-[#5B5B5B]">N°</label>
                         <input type="text" id="id" v-model="form.id" :disabled="!can?.gestionar"
@@ -416,7 +416,7 @@ const get_subproblemas_by_id = async () => {
                             :class="['mt-1 p-2 w-full border border-gray-300 rounded-md', !can?.gestionar ? 'bg-gray-100' : 'bg-white']">
                     </div>
                 </div>
-                <div class="flex items-center gap-6 mb-5">
+                <div class="grid grid-cols-2 lg:grid-cols-4 items-center gap-6 mb-5">
                     <div class="flex-1">
                         <div class="flex items-center gap-2">
                             <label for="modelo" class="block text-sm text-[#5B5B5B]">Modelo</label>
@@ -486,7 +486,7 @@ const get_subproblemas_by_id = async () => {
                             :class="['mt-1 p-2 w-full border border-gray-300 rounded-md', !can?.gestionar ? 'bg-gray-100' : 'bg-white']">
                     </div>
                 </div>
-                <div class="flex items-center gap-6 mb-5">
+                <div class="grid grid-cols-2 lg:grid-cols-4 items-center gap-6 mb-5">
                     <div class="flex-1">
                         <label for="direccion" class="block text-sm text-[#5B5B5B]">Dirección</label>
                         <input type="text" id="direccion" v-model="form.direccion" :disabled="!can?.gestionar"
@@ -512,7 +512,7 @@ const get_subproblemas_by_id = async () => {
                         </select>
                     </div>
                 </div>
-                <div class="flex items-center gap-6 mb-5">
+                <div class="grid grid-cols-2 lg:grid-cols-4 items-center gap-6 mb-5">
                     <div class="flex-1">
                         <label for="tecnico" class="block text-sm text-[#5B5B5B]">Técnico</label>
                         <select v-model="form.user_id" id="tecnico" :disabled="!can?.gestionar"
@@ -581,7 +581,7 @@ const get_subproblemas_by_id = async () => {
                         <input type="text" id="subproblema" v-model="form.sub_problema" class="mt-1 p-2 w-full border border-gray-300 rounded-md" > -->
                     </div>
                 </div>
-                <div class="flex items-center gap-6 mb-5">
+                <div class="grid grid-cols-2 lg:grid-cols-4 items-center gap-6 mb-5">
                     <div class="flex-1">
                         <label for="pagado" class="block text-sm text-[#5B5B5B]">Pagado</label>
                         <select v-model="form.pagado" :disabled="!can?.gestionar"
@@ -619,7 +619,7 @@ const get_subproblemas_by_id = async () => {
                 <div class="flex flex-col items-start w-full">
                     <!-- Círculo + texto en una fila -->
                     <div v-for="(actividad, index) in servicio_tecnico.actividades" :key="index"
-                        class="flex items-start gap-2 w-full">
+                        class="flex items-start gap-2 lg:gap-2 w-full">
                         <!-- Punto -->
                         <div class="flex flex-col items-center flex-shrink-0">
                             <svg v-if="servicio_tecnico.actividades.length == index + 1" width="13" height="12"
@@ -632,34 +632,41 @@ const get_subproblemas_by_id = async () => {
                             </svg>
                             <!-- Línea vertical debajo del círculo -->
                             <span v-if="servicio_tecnico.actividades.length != index + 1"
-                                class="block w-[1px] h-12 bg-[#AEAEAE]"></span>
+                                class="block w-[1px] h-22 lg:h-12 bg-[#AEAEAE]"></span>
                         </div>
 
-                        <!-- Contenido principal usando grid para alineación -->
-                        <div class="grid grid-cols-[1fr_auto] items-start gap-4 w-full">
+                        <div class="grid grid-cols-1 lg:grid-cols-[1fr_auto] items-start gap-2 lg:gap-4 w-full">
                             <!-- Texto al lado del círculo -->
-                            <div class="relative bottom-5">
-                                <span class="font-semibold text-[16px] text-[#7C7C7C]">{{ actividad.titulo }}</span>
-                                <p class="text-[16px] text-[#4F4F4F]">{{ actividad.descripcion }} - {{
-                                    actividad.updated_at }} - {{
-                                        actividad.user?.name ? actividad.user.name : '' }} {{ actividad.user?.apellido ?
-                                        actividad.user.apellido : '' }}</p>
-                            </div>
+                            <div class="relative lg:bottom-5">
+                                <span class="font-semibold text-sm lg:text-[16px] text-[#7C7C7C] block">{{
+                                    actividad.titulo }}</span>
 
-                            <!-- Botón de editar alineado a la derecha -->
-                            <!-- <div class="relative bottom-4 flex-shrink-0">
-                                <button @click="create_actividad_modal = !create_actividad_modal; actividad_selected = actividad; form_actividad.titulo = actividad.titulo; form_actividad.descripcion = actividad.descripcion;" class="cursor-pointer hover:bg-neutral-100 duration-300 p-2 rounded-full">
-                                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M17.71 4.0425C18.1 3.6525 18.1 3.0025 17.71 2.6325L15.37 0.2925C15 -0.0975 14.35 -0.0975 13.96 0.2925L12.12 2.1225L15.87 5.8725M0 14.2525V18.0025H3.75L14.81 6.9325L11.06 3.1825L0 14.2525Z" fill="#D9D9D9"/>
-                                    </svg>
-                                </button>
-                            </div> -->
+                                <!-- Fecha y usuario solo en móvil, arriba de la descripción -->
+                                <div class="flex items-center gap-1 mt-1 lg:hidden">
+                                    <span class="text-xs text-gray-500">{{ actividad.updated_at }}</span>
+                                    <span class="text-xs text-gray-500"
+                                        v-if="actividad.user?.name || actividad.user?.apellido">
+                                        - {{ actividad.user?.name || '' }} {{ actividad.user?.apellido || '' }}
+                                    </span>
+                                </div>
+
+                                <p class="text-sm lg:text-[16px] text-[#4F4F4F] mt-1 lg:mt-0">
+                                    {{ actividad.descripcion }}
+                                    <!-- Fecha y usuario inline solo en desktop -->
+                                    <span class="hidden lg:inline">
+                                        - {{ actividad.updated_at }}
+                                        <span v-if="actividad.user?.name || actividad.user?.apellido">
+                                            - {{ actividad.user?.name || '' }} {{ actividad.user?.apellido || '' }}
+                                        </span>
+                                    </span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <button @click="create_actividad_modal = !create_actividad_modal;"
-                class="w-[180px] flex justify-center items-center py-2 bg-blue-600 text-white rounded-full cursor-pointer mt-6"
+                class="w-full lg:w-[180px] flex justify-center items-center py-2 bg-blue-600 text-white rounded-full cursor-pointer mt-6"
                 style="background-color: #0D509C;">
                 Crear actividad
             </button>

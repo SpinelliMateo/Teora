@@ -51,8 +51,8 @@ const handle_filtro = (filtro) => {
     <Head title="Stock Detalle" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/stock');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z" fill="#626262"/>
@@ -61,17 +61,17 @@ const handle_filtro = (filtro) => {
                 <h1 class="text-[32px] font-bold text-gray-800">Detalle modelo {{ modelo.modelo }}</h1>
             </div>
 
-            <div class="flex items-center  gap-5 ml-1">
-                <div class="flex flex-col items-center">
-                    <button @click="handle_filtro('TODOS')" class="text-lg cursor-pointer" :class="filtro == 'TODOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">TODOS</button>
+            <div class="flex items-center w-full lg:w-auto gap-5 ml-1">
+                <div class="flex flex-col w-1/3 lg:w-auto items-center">
+                    <button @click="handle_filtro('TODOS')" class="text-lg cursor-pointer min-h-[56px]" :class="filtro == 'TODOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">TODOS</button>
                     <div class="h-[2px] w-[110%] mt-1" :class="filtro == 'TODOS' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                 </div>
-                <div class="flex flex-col items-center">
-                    <button @click="handle_filtro('NO OCULTOS')" class="text-lg  cursor-pointer" :class="filtro == 'NO OCULTOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">NO OCULTOS</button>
+                <div class="flex flex-col w-1/3 lg:w-auto items-center">
+                    <button @click="handle_filtro('NO OCULTOS')" class="text-lg  cursor-pointer min-h-[56px]" :class="filtro == 'NO OCULTOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">NO OCULTOS</button>
                     <div class="h-[2px]  w-[110%] mt-1" :class="filtro == 'NO OCULTOS' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                 </div>
-                <div class="flex flex-col items-center">
-                    <button @click="handle_filtro('OCULTOS')" class="text-lg cursor-pointer" :class="filtro == 'OCULTOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">OCULTOS</button>
+                <div class="flex flex-col w-1/3 lg:w-auto items-center">
+                    <button @click="handle_filtro('OCULTOS')" class="text-lg cursor-pointer min-h-[56px]" :class="filtro == 'OCULTOS' ? 'text-[#0D509C] font-bold' : 'text-[#5B5B5B]'">OCULTOS</button>
                     <div class="h-[2px]  w-[110%] mt-1" :class="filtro == 'OCULTOS' ? 'bg-[#0D509C]' : 'bg-[#5B5B5B]'"></div>
                 </div>
             </div>

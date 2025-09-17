@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
-import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useForm } from '@inertiajs/vue3';
-import { Link } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 
 const { success, error, warning, info } = useToast();
@@ -62,8 +60,8 @@ const handleSearch = () => {
     <Head title="Stock Detalle" />
 
     <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-20" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+        <div class="flex h-full flex-1 flex-col gap-4 p-4 px-5 lg:px-20" style="background-color: #F4F4F4;">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/configuracion');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z" fill="#626262"/>
@@ -71,13 +69,13 @@ const handleSearch = () => {
                 </button>
                 <h1 class="text-[32px] font-bold text-gray-800">Stock Mínimo</h1>
             </div>
-            <div class="flex justify-end items-center ">
-                <div class="relative">
+            <div class="flex lg:justify-end items-center ">
+                <div class="w-full lg:w-auto relative">
                     <input
                         type="text"
                         placeholder="Buscar"
                         @input="handleSearch"
-                        class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-[300px]" style="border-color: #0D509C;"
+                        class="px-10 py-2 border rounded-full focus:outline-none text-black  placeholder-[#0D509C] w-full lg:w-[300px]" style="border-color: #0D509C;"
                         v-model="searchTerm"
                     />
                     <span class="absolute left-3 top-3 text-gray-400">

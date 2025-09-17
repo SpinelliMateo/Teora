@@ -419,8 +419,8 @@ const eliminarModelo = () => {
     <Head :title="`Orden de fabricación ${ordenFabricacion.no_orden}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex h-full flex-1 flex-col gap-7 p-4 px-20 transition-all duration-300" style="background-color: #F4F4F4;">
-            <div class="flex items-center justify-between mt-8">
+        <div class="flex h-full flex-1 flex-col gap-7 p-4 px-5 lg:px-20 transition-all duration-300" style="background-color: #F4F4F4;">
+            <div class="flex items-center justify-between lg:mt-8">
                 <div class="flex items-center gap-4">
                     <button
                         @click="volver"
@@ -603,7 +603,7 @@ const eliminarModelo = () => {
             <div class="flex justify-end">
                 <button
                     @click="abrirModalAgregarModelo"
-                    class="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-full cursor-pointer font-medium transition-all duration-200 hover:bg-blue-700 hover:scale-105 shadow-md hover:shadow-lg"
+                    class="flex items-center justify-center lg:justify-normal w-full lg:w-auto gap-2 px-6 py-3 bg-blue-600 text-white rounded-full cursor-pointer font-medium transition-all duration-200 hover:bg-blue-700 hover:scale-105 shadow-md hover:shadow-lg"
                     style="background-color: rgb(13, 80, 156);"
                 >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -681,7 +681,6 @@ const eliminarModelo = () => {
             </div>
         </div>
 
-        <!-- Modal Agregar Modelo con transiciones mejoradas -->
         <Transition
             enter-active-class="transition-all duration-300"
             enter-from-class="opacity-0"
@@ -747,7 +746,6 @@ const eliminarModelo = () => {
             </div>
         </Transition>
 
-        <!-- Modal Editar Modelo con transiciones mejoradas -->
         <Transition
             enter-active-class="transition-all duration-300"
             enter-from-class="opacity-0"
@@ -799,7 +797,7 @@ const eliminarModelo = () => {
                         <div class="flex gap-3">
                             <button
                                 @click="cerrarModalEditarModelo"
-                                class="px-6 py-3 text-gray-700 bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all duration-200 font-medium"
+                                class="hidden lg:block px-6 py-3 text-gray-700 bg-gray-100 rounded-full cursor-pointer hover:bg-gray-200 transition-all duration-200 font-medium"
                             >
                                 Cancelar
                             </button>

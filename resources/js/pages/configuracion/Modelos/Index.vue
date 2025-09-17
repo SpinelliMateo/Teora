@@ -96,7 +96,7 @@ const irAEditar = (modelo: Modelo) => {
 
     <AppLayout>
         <div class="flex h-full flex-1 flex-col gap-4 p-4 lg:px-20 md:px-8 sm:px-4" style="background-color: #F4F4F4;">
-            <div class="flex items-center gap-5 mt-10">
+            <div class="flex items-center gap-5 lg:mt-10">
                 <button class="cursor-pointer" @click="router.get('/configuracion');">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z"
