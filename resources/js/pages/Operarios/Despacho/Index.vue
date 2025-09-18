@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 interface Modelo {
@@ -59,6 +58,16 @@ const isLoadingDespacho = ref(false);
 const mensaje = ref('');
 const tipoMensaje = ref<'success' | 'error' | ''>('');
 
+const ultimaActividad = ref(Date.now());
+const tiempoInactividad = ref(0);
+const TIEMPO_INACTIVIDAD_MS = 5 * 60 * 1000;
+const INTERVALO_VERIFICACION_MS = 10000;
+const mostrarContador = ref(false);
+const segundosRestantes = ref(0);
+let intervalVerificacion: number | null = null;
+let intervalContador: number | null = null;
+let timeoutRefresh: number | null = null;
+
 const remitosParaDespacho = computed((): Remito[] => {
     return props.remitos.filter(remito => remito.estado === 'despachado');
 });
@@ -80,7 +89,6 @@ const puedeDespachar = computed((): boolean => {
         return false;
     }
 
-    // Verificar que todas las cantidades estén completas (cantidad_restante === 0)
     return modelosResumen.value.every(modelo => modelo.cantidad_restante === 0);
 });
 
@@ -254,6 +262,112 @@ const handleEnterNumeroSerie = (event: KeyboardEvent) => {
         buscarControlStock();
     }
 };
+
+const hayTrabajoEnProgreso = computed(() => {
+    return (
+        remitosSeleccionados.value.length > 0 ||
+        controlStockItems.value.length > 0 ||
+        numeroSerie.value.trim() !== '' ||
+        isLoadingBusqueda.value ||
+        isLoadingDespacho.value ||
+        isLoadingModelos.value
+    );
+});
+
+// Actualizar última actividad
+const actualizarActividad = () => {
+    ultimaActividad.value = Date.now();
+    tiempoInactividad.value = 0;
+    ocultarContadorRefresh();
+};
+
+// Función para mostrar contador de refresh
+const mostrarContadorRefresh = () => {
+    mostrarContador.value = true;
+    segundosRestantes.value = 10; // 10 segundos de cuenta regresiva
+    
+    intervalContador = window.setInterval(() => {
+        segundosRestantes.value--;
+        if (segundosRestantes.value <= 0) {
+            window.location.reload();
+        }
+    }, 1000);
+};
+
+// Función para ocultar contador
+const ocultarContadorRefresh = () => {
+    mostrarContador.value = false;
+    if (intervalContador) {
+        clearInterval(intervalContador);
+        intervalContador = null;
+    }
+    if (timeoutRefresh) {
+        clearTimeout(timeoutRefresh);
+        timeoutRefresh = null;
+    }
+};
+
+// Verificar inactividad periódicamente
+const verificarInactividad = () => {
+    const ahora = Date.now();
+    tiempoInactividad.value = ahora - ultimaActividad.value;
+    
+    // Si hay inactividad suficiente Y no hay trabajo en progreso
+    if (tiempoInactividad.value >= TIEMPO_INACTIVIDAD_MS && !hayTrabajoEnProgreso.value) {
+        mostrarContadorRefresh();
+    }
+};
+
+// Eventos a monitorear para detectar actividad
+const eventosActividad = [
+    'mousedown',
+    'mousemove',
+    'keypress',
+    'scroll',
+    'touchstart',
+    'click',
+    'keydown'
+];
+
+// En onMounted, agregar los listeners
+onMounted(() => {
+    // Agregar listeners para detectar actividad
+    eventosActividad.forEach(evento => {
+        document.addEventListener(evento, actualizarActividad);
+    });
+    
+    // Iniciar verificación periódica
+    intervalVerificacion = window.setInterval(verificarInactividad, INTERVALO_VERIFICACION_MS);
+    
+    // Enfocar el input al cargar
+    nextTick(() => {
+        numeroSerieInput.value?.focus();
+    });
+});
+
+// En onUnmounted, limpiar listeners
+onUnmounted(() => {
+    // Remover listeners
+    eventosActividad.forEach(evento => {
+        document.removeEventListener(evento, actualizarActividad);
+    });
+    
+    // Limpiar intervalos
+    if (intervalVerificacion) {
+        clearInterval(intervalVerificacion);
+    }
+    if (intervalContador) {
+        clearInterval(intervalContador);
+    }
+    if (timeoutRefresh) {
+        clearTimeout(timeoutRefresh);
+    }
+});
+
+// Agregar watchers para detectar cambios importantes
+watch([numeroSerie, remitosSeleccionados, controlStockItems], () => {
+    actualizarActividad();
+});
 </script>
 
 <template>

@@ -367,7 +367,7 @@ const eliminarAlerta = () => {
                         </span>
                     </div>
                     <button @click="open_filtros = !open_filtros"
-                        class="flex items-center justify-center lg:justify-normal gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer w-full lg:w-[200px]"
+                        class="flex items-center justify-center lg:justify-normal gap-2 px-6 py-2 bg-blue-600 text-white rounded-full cursor-pointer w-full lg:w-auto"
                         style="background-color: #0D509C;">
                         <svg width="17" height="16" viewBox="0 0 17 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path

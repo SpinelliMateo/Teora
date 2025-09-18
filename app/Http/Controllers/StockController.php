@@ -27,15 +27,24 @@ class StockController extends Controller
 
         $stockQuery = ControlStock::query()
             ->where('fecha_prearmado', '>=', $fechaParsed)
+            ->whereNull('fecha_salida')
             ->selectRaw('
                 modelo_id,
-                COUNT(CASE WHEN fecha_prearmado IS NOT NULL THEN 1 END) as conteo_prearmado,
-                COUNT(CASE WHEN fecha_inyectado IS NOT NULL THEN 1 END) as conteo_inyectado,
-                COUNT(CASE WHEN fecha_armado IS NOT NULL THEN 1 END) as conteo_armado,
-                COUNT(CASE WHEN fecha_embalado IS NOT NULL THEN 1 END) as conteo_embalado
+                COUNT(CASE 
+                    WHEN fecha_embalado IS NOT NULL THEN 1
+                    WHEN fecha_armado IS NOT NULL THEN 2
+                    WHEN fecha_inyectado IS NOT NULL THEN 3
+                    WHEN fecha_prearmado IS NOT NULL THEN 4
+                END) as total, -- opcional: total por modelo
+
+                COUNT(CASE WHEN fecha_embalado IS NOT NULL THEN 1 END) as conteo_embalado,
+                COUNT(CASE WHEN fecha_armado IS NOT NULL AND fecha_embalado IS NULL THEN 1 END) as conteo_armado,
+                COUNT(CASE WHEN fecha_inyectado IS NOT NULL AND fecha_armado IS NULL AND fecha_embalado IS NULL THEN 1 END) as conteo_inyectado,
+                COUNT(CASE WHEN fecha_prearmado IS NOT NULL AND fecha_inyectado IS NULL AND fecha_armado IS NULL AND fecha_embalado IS NULL THEN 1 END) as conteo_prearmado
             ')
             ->groupBy('modelo_id')
             ->with('modelo.stock_minimo');
+
 
         if (!empty($search)) {
             $search = mb_strtolower($search); // convertir el término de búsqueda a minúsculas en PHP
@@ -58,11 +67,7 @@ class StockController extends Controller
     {
         $fecha = $request->input('fecha');
         $filtro = $request->input('filtro');
-      
-        // if($filtro){
-        //     dd($filtro);
-        // }
-        // Si hay fecha, parseamos. Si no, tomamos hoy - 4 meses
+    
         $fechaParsed = $fecha 
             ? Carbon::createFromFormat('Y-m-d\TH:i', $fecha) 
             : Carbon::now()->subMonths(4);
@@ -77,9 +82,9 @@ class StockController extends Controller
             ]);
         }
         $stock_detalle_query = ControlStock::where('modelo_id', $modelo->id)
-            ->where('fecha_prearmado', '>=', $fechaParsed) // siempre se aplica el filtro
+            ->where('fecha_prearmado', '>=', $fechaParsed)
+            ->whereNull('fecha_salida')
             ->orderBy('fecha_prearmado', 'desc');
-            // ->get();
     
         $stock_detalle = null;
         if($filtro == 'OCULTOS'){

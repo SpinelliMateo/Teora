@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Operario;
 use App\Models\Sector;
+use App\Traits\RegistraActividades;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Inertia\Inertia;
@@ -14,6 +15,8 @@ use Picqer\Barcode\BarcodeGeneratorSVG;
 
 class OperarioController extends Controller
 {
+    use RegistraActividades;
+
     public function index(Request $request)
     {
         try {
@@ -87,6 +90,12 @@ class OperarioController extends Controller
                 'sectores_asignados' => $validated['sectores'] ?? []
             ]);
 
+            $this->registrarCreacion(
+                "Se creó el operario {$operario->nombre}",
+                'operarios', // módulo
+                $operario->id  // ID de referencia
+            );
+
             return redirect()->back()->with('success', 'Operario creado correctamente');
 
         } catch (\Exception $e) {
@@ -137,6 +146,13 @@ class OperarioController extends Controller
 
             DB::commit();
 
+                    // Registrar la actividad
+                $this->registrarModificacion(
+                    "Se modificó el operario: {$operario->nombre}",
+                    'operarios',
+                    $operario->id
+                );
+
             Log::info('Operario actualizado exitosamente:', [
                 'operario_id' => $operario->id,
                 'sectores_asignados' => $validated['sectores'] ?? []
@@ -163,6 +179,12 @@ class OperarioController extends Controller
             $operario->delete();
             
             DB::commit();
+
+            $this->registrarEliminacion(
+                "Se eliminó el operario: {$operario->nombre}",
+                'operarios',
+                $operario->id
+            );
             
             Log::info('Operario eliminado exitosamente:', ['operario_id' => $operario->id]);
             

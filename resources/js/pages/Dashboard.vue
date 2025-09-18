@@ -2,9 +2,31 @@
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
 import { Head } from '@inertiajs/vue3';
-import { ref, onMounted, nextTick, computed, onUnmounted } from 'vue';
+import { ref, onMounted, nextTick, computed, onUnmounted, reactive, watch } from 'vue';
+import axios from 'axios';
 
-// Interfaces
+interface Props {
+  metricas: {
+    prearmado: number;
+    inyectado: number;
+    armado: number;
+    embalado: number;
+  };
+  alertas: Alert[];
+  entregas: {
+    ordenes: EntregaOrden[];
+    estadisticas: {
+      este_mes: number;
+      completadas: number;
+      pendientes: number;
+      vencidas: number;
+    };
+  };
+  actividades: Activity[]; 
+}
+
+const props = defineProps<Props>();
+
 interface ChartData {
   label: string;
   value: number;
@@ -13,20 +35,78 @@ interface ChartData {
 
 interface Alert {
   id: number;
-  fechaAlerta: string;
-  numeroSerie: string;
-  numeroOrden: string;
+  fecha_alerta: string;
+  usuario: string;
+  serie: string;
   modelo: string;
-  fechaFinalizacion: string;
   motivo: string;
   tipo: 'error' | 'warning' | 'info';
+  dias_transcurridos: number;
+}
+
+interface EntregaOrden {
+  id: number;
+  no_orden: string;
+  fecha_finalizacion: string;
+  fecha_finalizacion_formato: string;
+  modelos: ModeloEntrega[];
+  operarios: OperarioEntrega[];
+  estado: string;
+  estado_visual: 'completado' | 'vencido' | 'pendiente';
+}
+
+interface ModeloEntrega {
+  nombre: string;
+  modelo: string;
+  cantidad: number;
+}
+
+interface OperarioEntrega {
+  nombre: string;
+  legajo: string;
+}
+
+interface CalendarDay {
+  day: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  hasDelivery: boolean;
+  entregas: EntregaOrden[];
+  tipoIndicador?: 'completado' | 'vencido' | 'pendiente' | null;
+}
+
+interface Tooltip {
+  show: boolean;
+  x: number;
+  y: number;
+  content: {
+    dia: number;
+    entregas: EntregaOrden[];
+  } | null;
 }
 
 interface Activity {
   id: number;
   fecha: string;
+  fecha_completa: string;
   descripcion: string;
-  tipo: 'carga' | 'modificacion' | 'pausa' | 'reanudacion' | 'finalizacion';
+  tipo: string;
+  usuario: string;
+  modulo: string | null;
+  icono: string;
+  color: string;
+  tiempo_transcurrido: string;
+  referencia_id: number | null;
+  referencia_tipo: string | null;
+  datos_adicionales: any;
+}
+
+interface ChartConfig {
+  data: ChartData[];
+  total: number;
+  fechaInicio: string;
+  fechaFin: string;
+  loading: boolean;
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -37,75 +117,193 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 // Estados reactivos
-const currentTime = ref(new Date());
+const entregasDelMes = ref<Record<number, EntregaOrden[]>>({});
 const selectedMonth = ref(new Date().getMonth());
 const selectedYear = ref(new Date().getFullYear());
+const currentTime = ref(new Date());
+const isLoadingCalendar = ref(false); // Para mostrar loading durante el cambio
+const tooltip = reactive<Tooltip>({
+  show: false,
+  x: 0,
+  y: 0,
+  content: null
+});
 
-// Datos de ejemplo para los gráficos
-const prestamadoData: ChartData[] = [
-  { label: 'Ene', value: 15, date: '14/03/2024' },
-  { label: 'Feb', value: 8, date: '23/03/2024' },
-  { label: 'Mar', value: 12, date: '23/03/2024' },
-  { label: 'Abr', value: 18, date: '15/04/2024' },
-  { label: 'May', value: 22, date: '20/05/2024' },
-];
+// Configuración de gráficos
+const graficos = reactive<Record<string, ChartConfig>>({
+  prearmado: {
+    data: [],
+    total: 0,
+    fechaInicio: '',
+    fechaFin: '',
+    loading: false
+  },
+  inyectado: {
+    data: [],
+    total: 0,
+    fechaInicio: '',
+    fechaFin: '',
+    loading: false
+  },
+  armado: {
+    data: [],
+    total: 0,
+    fechaInicio: '',
+    fechaFin: '',
+    loading: false
+  },
+  embalado: {
+    data: [],
+    total: 0,
+    fechaInicio: '',
+    fechaFin: '',
+    loading: false
+  }
+});
 
-const inyectadoData: ChartData[] = [
-  { label: 'Ene', value: 25, date: '14/03/2024' },
-  { label: 'Feb', value: 0, date: '24/03/2024' },
-  { label: 'Mar', value: 0, date: '24/03/2024' },
-  { label: 'Abr', value: 15, date: '18/04/2024' },
-  { label: 'May', value: 10, date: '22/05/2024' },
-];
+// Fechas por defecto (últimos 6 meses)
+const fechaPorDefecto = {
+  inicio: new Date(new Date().setMonth(new Date().getMonth() - 5)),
+  fin: new Date()
+};
 
-const armadoData: ChartData[] = [
-  { label: 'Abuso', value: 20, date: '24/03/2024' },
-  { label: 'Arleno', value: 25, date: '24/03/2024' },
-  { label: 'Golpe', value: 35, date: '24/03/2024' },
-  { label: 'Acoso', value: 18, date: '24/03/2024' },
-  { label: 'Robo', value: 30, date: '25/03/2024' },
-];
+// Formularios de fechas para cada gráfico
+const formsGraficos = reactive({
+  prearmado: {
+    fechaInicio: fechaPorDefecto.inicio.toISOString().split('T')[0],
+    fechaFin: fechaPorDefecto.fin.toISOString().split('T')[0],
+    mostrarForm: false
+  },
+  inyectado: {
+    fechaInicio: fechaPorDefecto.inicio.toISOString().split('T')[0],
+    fechaFin: fechaPorDefecto.fin.toISOString().split('T')[0],
+    mostrarForm: false
+  },
+  armado: {
+    fechaInicio: fechaPorDefecto.inicio.toISOString().split('T')[0],
+    fechaFin: fechaPorDefecto.fin.toISOString().split('T')[0],
+    mostrarForm: false
+  },
+  embalado: {
+    fechaInicio: fechaPorDefecto.inicio.toISOString().split('T')[0],
+    fechaFin: fechaPorDefecto.fin.toISOString().split('T')[0],
+    mostrarForm: false
+  }
+});
 
-const embaladoData: ChartData[] = [
-  { label: 'Abuso', value: 30, date: '14/03/2024' },
-  { label: 'Arleno', value: 22, date: '24/03/2024' },
-  { label: 'Golpe', value: 25, date: '24/03/2024' },
-  { label: 'Acoso', value: 15, date: '24/03/2024' },
-  { label: 'Robo', value: 28, date: '24/03/2024' },
-];
+const activities = ref<Activity[]>(props.actividades || []);
+const cargandoActividades = ref(false);
+const offsetActividades = ref(10); // Para paginación
 
-// Datos de alertas
-const alerts = ref<Alert[]>([
-  { id: 1, fechaAlerta: '04/03/25', numeroSerie: '1234', numeroOrden: '00004', modelo: '0001', fechaFinalizacion: '04/03/25', motivo: 'Falta material', tipo: 'error' },
-  { id: 2, fechaAlerta: '04/03/25', numeroSerie: '1235', numeroOrden: '00005', modelo: '0002', fechaFinalizacion: '04/03/25', motivo: 'Falta energía', tipo: 'warning' },
-  { id: 3, fechaAlerta: '04/03/25', numeroSerie: '1236', numeroOrden: '00006', modelo: '0003', fechaFinalizacion: '04/03/25', motivo: 'Falta material', tipo: 'error' },
-  { id: 4, fechaAlerta: '04/03/25', numeroSerie: '1237', numeroOrden: '00007', modelo: '0004', fechaFinalizacion: '04/03/25', motivo: 'Falta de corte', tipo: 'info' },
-  { id: 5, fechaAlerta: '04/03/25', numeroSerie: '1238', numeroOrden: '00008', modelo: '0005', fechaFinalizacion: '04/03/25', motivo: 'Falta material', tipo: 'error' },
-  { id: 6, fechaAlerta: '04/03/25', numeroSerie: '1239', numeroOrden: '00009', modelo: '0006', fechaFinalizacion: '04/03/25', motivo: 'Falta de corte', tipo: 'info' },
-  { id: 7, fechaAlerta: '04/03/25', numeroSerie: '1240', numeroOrden: '00010', modelo: '0007', fechaFinalizacion: '04/03/25', motivo: 'Falta energía', tipo: 'warning' },
-  { id: 8, fechaAlerta: '04/03/25', numeroSerie: '1241', numeroOrden: '00011', modelo: '0008', fechaFinalizacion: '04/03/25', motivo: 'Falta material', tipo: 'error' },
-]);
-
-// Datos de actividades recientes
-const activities = ref<Activity[]>([
-  { id: 1, fecha: '15-05-2024', descripcion: 'Se cargó el orden 00738', tipo: 'carga' },
-  { id: 2, fecha: '15-05-2024', descripcion: 'Se modificó orden 00738', tipo: 'modificacion' },
-  { id: 3, fecha: '08-05-2024', descripcion: 'Empalme nuevos de cadena a compra en la orden 8284', tipo: 'modificacion' },
-  { id: 4, fecha: '06-05-2024', descripcion: 'Inicio de prueba de elemento compra en la orden 6829', tipo: 'carga' },
-  { id: 5, fecha: '06-05-2024', descripcion: 'Se pausó el orden 00924', tipo: 'pausa' },
-  { id: 6, fecha: '07-05-2024', descripcion: 'Se retomó la orden 8284', tipo: 'reanudacion' },
-  { id: 7, fecha: '07-05-2024', descripcion: 'Se cargó el orden 6829', tipo: 'carga' },
-  { id: 8, fecha: '07-05-2024', descripcion: 'Se cargó el orden 00924', tipo: 'carga' },
-]);
-
-// Referencias para los canvas de los gráficos
-const prestamadoCanvas = ref<HTMLCanvasElement | null>(null);
+const prearmadoCanvas = ref<HTMLCanvasElement | null>(null);
 const inyectadoCanvas = ref<HTMLCanvasElement | null>(null);
 const armadoCanvas = ref<HTMLCanvasElement | null>(null);
 const embaladoCanvas = ref<HTMLCanvasElement | null>(null);
 
 let chartInstances: any[] = [];
 let timeInterval: NodeJS.Timeout | null = null;
+
+const cargarEntregasDelMes = async (mes?: number, anio?: number) => {
+  isLoadingCalendar.value = true;
+  
+  try {
+    // Limpiar datos anteriores inmediatamente
+    entregasDelMes.value = {};
+    
+    const response = await axios.get('/dashboard/entregas-mes', {
+      params: {
+        mes: mes || selectedMonth.value + 1,
+        anio: anio || selectedYear.value
+      }
+    });
+    
+    // Usar nextTick para asegurar que la UI se actualice
+    await nextTick();
+    entregasDelMes.value = response.data;
+    await nextTick(); // Segundo nextTick para garantizar la actualización
+    
+    console.log('Entregas del mes cargadas:', response.data);
+  } catch (error) {
+    console.error('Error cargando entregas del mes:', error);
+  } finally {
+    isLoadingCalendar.value = false;
+  }
+};
+
+// Función para cargar datos del gráfico
+const cargarDatosGrafico = async (tipo: string, fechaInicio?: string, fechaFin?: string) => {
+  console.log(`Cargando datos para gráfico ${tipo}...`);
+  graficos[tipo].loading = true;
+  
+  try {
+    const params: any = { tipo };
+    
+    if (fechaInicio && fechaFin) {
+      params.fecha_inicio = fechaInicio;
+      params.fecha_fin = fechaFin;
+    }
+    
+    const response = await axios.get('/dashboard/graficos', { params });
+    console.log(`Datos recibidos para ${tipo}:`, response.data);
+    
+    graficos[tipo].data = response.data.datos;
+    graficos[tipo].total = response.data.total;
+    graficos[tipo].fechaInicio = response.data.fecha_inicio;
+    graficos[tipo].fechaFin = response.data.fecha_fin;
+    
+    // Recrear el gráfico específico
+    await recrearGrafico(tipo);
+    
+  } catch (error) {
+    console.error(`Error cargando datos del gráfico ${tipo}:`, error);
+  } finally {
+    graficos[tipo].loading = false;
+  }
+};
+
+// Función para aplicar filtro de fechas
+const aplicarFiltroFechas = async (tipo: string) => {
+  const form = formsGraficos[tipo];
+  await cargarDatosGrafico(tipo, form.fechaInicio, form.fechaFin);
+  form.mostrarForm = false;
+};
+
+
+
+// Función para recrear un gráfico específico
+const recrearGrafico = async (tipo: string) => {
+  await nextTick();
+  
+  let canvas;
+  switch (tipo) {
+    case 'prearmado':
+      canvas = prearmadoCanvas.value;
+      break;
+    case 'inyectado':
+      canvas = inyectadoCanvas.value;
+      break;
+    case 'armado':
+      canvas = armadoCanvas.value;
+      break;
+    case 'embalado':
+      canvas = embaladoCanvas.value;
+      break;
+  }
+  
+  if (canvas && graficos[tipo].data.length > 0) {
+    // Destruir gráfico anterior si existe
+    const existingChart = chartInstances.find(chart => chart.canvas === canvas);
+    if (existingChart) {
+      existingChart.destroy();
+      chartInstances = chartInstances.filter(chart => chart !== existingChart);
+    }
+    
+    const newChart = await crearGrafico(canvas, graficos[tipo].data, tipo.charAt(0).toUpperCase() + tipo.slice(1));
+    if (newChart) {
+      chartInstances.push(newChart);
+    }
+  }
+};
 
 // Computed properties
 const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -115,9 +313,9 @@ const currentMonthName = computed(() => monthNames[selectedMonth.value]);
 
 const alertsByType = computed(() => {
   return {
-    error: alerts.value.filter(alert => alert.tipo === 'error').length,
-    warning: alerts.value.filter(alert => alert.tipo === 'warning').length,
-    info: alerts.value.filter(alert => alert.tipo === 'info').length,
+    error: props.alertas.filter(alert => alert.tipo === 'error').length,
+    warning: props.alertas.filter(alert => alert.tipo === 'warning').length,
+    info: props.alertas.filter(alert => alert.tipo === 'info').length,
   };
 });
 
@@ -125,7 +323,7 @@ const getAlertClass = (tipo: string) => {
   switch (tipo) {
     case 'error': return 'bg-red-50';
     case 'warning': return 'bg-orange-50';
-    case 'info': return 'bg-yellow-50';
+    case 'info': return '';
     default: return 'bg-gray-50';
   }
 };
@@ -139,18 +337,47 @@ const getAlertTextClass = (tipo: string) => {
   }
 };
 
+// Función para obtener clase del indicador
+const getIndicadorClass = (tipoIndicador: string | null) => {
+  switch (tipoIndicador) {
+    case 'completado':
+      return 'bg-green-500';
+    case 'vencido':
+      return 'bg-red-500';
+    case 'pendiente':
+      return 'bg-blue-500';
+    default:
+      return 'bg-gray-400';
+  }
+};
 
+// Función para anillos del día actual
+const getIndicadorRingClass = (tipoIndicador: string | null) => {
+  switch (tipoIndicador) {
+    case 'completado':
+      return 'ring-green-500';
+    case 'vencido':
+      return 'ring-red-500';
+    case 'pendiente':
+      return 'ring-blue-500';
+    default:
+      return 'ring-gray-400';
+  }
+};
 
-// Generar calendario del mes actual
+// Generar calendario del mes actual - MEJORADO para reactividad
 const generateCalendar = computed(() => {
   const year = selectedYear.value;
   const month = selectedMonth.value;
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  const startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // Lunes = 0
+  const startingDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
   const daysInMonth = lastDay.getDate();
   
-  const calendar = [];
+  console.log(`Generando calendario para ${month + 1}/${year}`);
+  console.log('Entregas del mes disponibles:', entregasDelMes.value);
+  
+  const calendar: CalendarDay[] = [];
   
   // Días del mes anterior
   const prevMonth = new Date(year, month - 1, 0);
@@ -159,7 +386,9 @@ const generateCalendar = computed(() => {
       day: prevMonth.getDate() - i,
       isCurrentMonth: false,
       isToday: false,
-      hasDelivery: false
+      hasDelivery: false,
+      entregas: [],
+      tipoIndicador: null
     });
   }
   
@@ -169,50 +398,224 @@ const generateCalendar = computed(() => {
     const isToday = year === today.getFullYear() && 
                    month === today.getMonth() && 
                    day === today.getDate();
+                   
+    // Forzar reactividad usando el valor actual de entregasDelMes
+    const entregasDelDia = entregasDelMes.value[day] || [];
+    
+    // Debug para días con entregas
+    if (entregasDelDia.length > 0) {
+      console.log(`Día ${day} tiene ${entregasDelDia.length} entregas:`, entregasDelDia);
+    }
+    
+    // Determinar el tipo de indicador basado en el estado de las entregas
+    let tipoIndicador: 'completado' | 'vencido' | 'pendiente' | null = null;
+    if (entregasDelDia.length > 0) {
+      const hasCompletado = entregasDelDia.some(e => e.estado_visual === 'completado');
+      const hasVencido = entregasDelDia.some(e => e.estado_visual === 'vencido');
+      
+      if (hasCompletado && entregasDelDia.every(e => e.estado_visual === 'completado')) {
+        tipoIndicador = 'completado';
+      } else if (hasVencido) {
+        tipoIndicador = 'vencido';
+      } else {
+        tipoIndicador = 'pendiente';
+      }
+      
+      console.log(`Día ${day}: indicador = ${tipoIndicador}`);
+    }
+    
     calendar.push({
       day,
       isCurrentMonth: true,
       isToday,
-      hasDelivery: [4, 11, 17, 25].includes(day) // Días con entregas
+      hasDelivery: entregasDelDia.length > 0,
+      entregas: entregasDelDia,
+      tipoIndicador
     });
   }
   
   // Días del mes siguiente para completar la semana
-  const remainingDays = 42 - calendar.length; // 6 semanas × 7 días
+  const remainingDays = 42 - calendar.length;
   for (let day = 1; day <= remainingDays; day++) {
     calendar.push({
       day,
       isCurrentMonth: false,
       isToday: false,
-      hasDelivery: false
+      hasDelivery: false,
+      entregas: [],
+      tipoIndicador: null
     });
   }
   
+  console.log('Calendario generado:', calendar.filter(d => d.hasDelivery));
   return calendar;
 });
+  
+const showTooltip = (event: MouseEvent, day: CalendarDay) => {
+  if (day.hasDelivery && day.entregas.length > 0) {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    tooltip.x = rect.left + rect.width / 2;
+    tooltip.y = rect.top - 10;
+    tooltip.content = {
+      dia: day.day,
+      entregas: day.entregas
+    };
+    tooltip.show = true;
+  }
+};
 
-// Funciones para navegar el calendario
-const previousMonth = () => {
+const hideTooltip = () => {
+  tooltip.show = false;
+  tooltip.content = null;
+};
+
+// Computed para próximas entregas
+const proximasEntregas = computed(() => {
+  const hoy = new Date();
+  const manana = new Date(hoy);
+  manana.setDate(hoy.getDate() + 1);
+  
+  return props.entregas.ordenes
+    .filter(orden => {
+      const fechaEntrega = new Date(orden.fecha_finalizacion);
+      return fechaEntrega >= hoy;
+    })
+    .slice(0, 3)
+    .map(orden => {
+      const fechaEntrega = new Date(orden.fecha_finalizacion);
+      const diffDays = Math.ceil((fechaEntrega.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let etiqueta = '';
+      if (diffDays === 0) {
+        etiqueta = 'Hoy';
+      } else if (diffDays === 1) {
+        etiqueta = 'Mañana';
+      } else {
+        etiqueta = `En ${diffDays} días`;
+      }
+      
+      return {
+        ...orden,
+        etiqueta,
+        color: diffDays === 0 ? 'blue' : diffDays === 1 ? 'orange' : 'green'
+      };
+    });
+});
+
+const previousMonth = async () => {
   if (selectedMonth.value === 0) {
     selectedMonth.value = 11;
     selectedYear.value--;
   } else {
     selectedMonth.value--;
   }
+  await cargarEntregasDelMes();
 };
 
-const nextMonth = () => {
+const nextMonth = async () => {
   if (selectedMonth.value === 11) {
     selectedMonth.value = 0;
     selectedYear.value++;
   } else {
     selectedMonth.value++;
   }
+  await cargarEntregasDelMes();
+};
+
+const getColorActividad = (color: string) => {
+  const colores: Record<string, string> = {
+    'blue': 'bg-blue-100 text-blue-600',
+    'green': 'bg-green-100 text-green-600',
+    'yellow': 'bg-yellow-100 text-yellow-600',
+    'red': 'bg-red-100 text-red-600',
+    'purple': 'bg-purple-100 text-purple-600',
+    'gray': 'bg-gray-100 text-gray-600',
+    'indigo': 'bg-indigo-100 text-indigo-600',
+    'pink': 'bg-pink-100 text-pink-600',
+    'orange': 'bg-orange-100 text-orange-600'
+  };
+  
+  return colores[color] || 'bg-gray-100 text-gray-600';
+};
+
+const getIconoActividad = (icono: string) => {
+  const iconos: Record<string, string> = {
+    'plus': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>',
+    'edit': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>',
+    'trash': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>',
+    'play': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293L12 11l.707-.707A1 1 0 0113.414 10H15M6 20a2 2 0 01-2-2V6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6z"></path></svg>',
+    'pause': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
+    'check': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
+    'x': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+    'upload': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>',
+    'download': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path></svg>',
+    'settings': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>',
+    'user': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>',
+    'file': '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
+  };
+  
+  return iconos[icono] || '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+};
+
+const cargarMasActividades = async () => {
+  if (cargandoActividades.value) return;
+  
+  cargandoActividades.value = true;
+  
+  try {
+    const response = await axios.get('/dashboard/actividades-recientes', {
+      params: {
+        limite: 10,
+        offset: offsetActividades.value
+      }
+    });
+    
+    // Agregar las nuevas actividades a las existentes
+    const nuevasActividades = response.data;
+    activities.value.push(...nuevasActividades);
+    
+    // Actualizar el offset para la próxima carga
+    offsetActividades.value += nuevasActividades.length;
+    
+  } catch (error) {
+    console.error('Error cargando más actividades:', error);
+  } finally {
+    cargandoActividades.value = false;
+  }
+};
+
+const getEstadoClass = (estadoVisual: string) => {
+  switch (estadoVisual) {
+    case 'completado':
+      return 'text-green-600 bg-green-50 border-green-200';
+    case 'vencido':
+      return 'text-red-600 bg-red-50 border-red-200';
+    case 'pendiente':
+      return 'text-blue-600 bg-blue-50 border-blue-200';
+    default:
+      return 'text-gray-600 bg-gray-50 border-gray-200';
+  }
+};
+
+const getEstadoTexto = (estadoVisual: string) => {
+  switch (estadoVisual) {
+    case 'completado':
+      return 'Completado';
+    case 'vencido':
+      return 'Vencido';
+    case 'pendiente':
+      return 'Pendiente';
+    default:
+      return 'Estado desconocido';
+  }
 };
 
 // Función para crear gráfico individual
 const crearGrafico = async (canvas: HTMLCanvasElement, data: ChartData[], titulo: string) => {
-  if (!canvas) return;
+  if (!canvas || !data.length) {
+    console.log('Canvas o datos no disponibles para', titulo);
+    return null;
+  }
 
   try {
     // Importar Chart.js dinámicamente
@@ -220,7 +623,9 @@ const crearGrafico = async (canvas: HTMLCanvasElement, data: ChartData[], titulo
     Chart.register(...registerables);
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return null;
+
+    console.log(`Creando gráfico ${titulo} con datos:`, data);
 
     return new Chart(ctx, {
       type: 'bar',
@@ -302,36 +707,6 @@ const crearGrafico = async (canvas: HTMLCanvasElement, data: ChartData[], titulo
   }
 };
 
-// Función para crear todos los gráficos
-const crearGraficos = async () => {
-  await nextTick();
-
-  // Destruir gráficos anteriores si existen
-  chartInstances.forEach(chart => {
-    if (chart) {
-      chart.destroy();
-    }
-  });
-  chartInstances = [];
-
-  // Crear nuevos gráficos
-  const charts = [
-    { canvas: prestamadoCanvas.value, data: prestamadoData, title: 'Prestamado' },
-    { canvas: inyectadoCanvas.value, data: inyectadoData, title: 'Inyectado' },
-    { canvas: armadoCanvas.value, data: armadoData, title: 'Armado' },
-    { canvas: embaladoCanvas.value, data: embaladoData, title: 'Embalado' }
-  ];
-
-  for (const chart of charts) {
-    if (chart.canvas) {
-      const chartInstance = await crearGrafico(chart.canvas, chart.data, chart.title);
-      if (chartInstance) {
-        chartInstances.push(chartInstance);
-      }
-    }
-  }
-};
-
 // Actualizar reloj cada segundo
 const updateTime = () => {
   currentTime.value = new Date();
@@ -355,19 +730,28 @@ const formatDate = (date: Date) => {
   });
 };
 
-// Calcular totales
-const totales = computed(() => ({
-  prestamado: prestamadoData.reduce((sum, item) => sum + item.value, 0),
-  inyectado: inyectadoData.reduce((sum, item) => sum + item.value, 0),
-  armado: armadoData.reduce((sum, item) => sum + item.value, 0),
-  embalado: embaladoData.reduce((sum, item) => sum + item.value, 0)
-}));
+// Watcher para reactividad adicional
+watch([selectedMonth, selectedYear], async () => {
+  await cargarEntregasDelMes();
+}, { deep: true });
 
 // Lifecycle hooks
-onMounted(() => {
-  crearGraficos();
+onMounted(async () => {
+  console.log('Dashboard montado, cargando datos...');
+  
   updateTime();
   timeInterval = setInterval(updateTime, 1000);
+  
+  // Cargar datos iniciales de todos los gráficos
+  await Promise.all([
+    cargarDatosGrafico('prearmado'),
+    cargarDatosGrafico('inyectado'),
+    cargarDatosGrafico('armado'),
+    cargarDatosGrafico('embalado')
+  ]);
+  
+  // Cargar entregas del mes actual
+  await cargarEntregasDelMes();
 });
 
 onUnmounted(() => {
@@ -385,6 +769,7 @@ onUnmounted(() => {
 });
 </script>
 
+
 <template>
   <Head title="Dashboard" />
   
@@ -394,111 +779,114 @@ onUnmounted(() => {
       <div class="flex justify-between items-center mb-6">
         <div>
           <h1 class="text-2xl font-medium text-gray-700">Inicio</h1>
-          
-          
         </div>
-
       </div>
 
       <!-- Tarjetas de métricas superiores -->
       <div class="grid grid-cols-4 gap-4 mb-6">
-        <!-- Prestamado -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+        <!-- Prearmado -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <div>
-              <p class="text-4xl font-light text-blue-500">{{ totales.prestamado }}</p>
-              <p class="text-sm text-gray-500">Prearmado</p>
-              <div class="flex items-center mt-2">
-                <span class="text-xs text-green-500">+12%</span>
-                <svg class="w-3 h-3 ml-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="text-blue-400">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-              </svg>
+            <div class="flex items-center space-x-3">
+              <p class="text-3xl font-light text-blue-500">{{ metricas.prearmado }}</p>
+              <p class="text-lg text-gray-600 font-medium">Prearmado</p>
             </div>
           </div>
         </div>
 
         <!-- Inyectado -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <div>
-              <p class="text-4xl font-light text-blue-500">{{ totales.inyectado }}</p>
-              <p class="text-sm text-gray-500">Inyectado</p>
-              <div class="flex items-center mt-2">
-                <span class="text-xs text-red-500">-8%</span>
-                <svg class="w-3 h-3 ml-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="text-blue-400">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
-              </svg>
+            <div class="flex items-center space-x-3">
+              <p class="text-3xl font-light text-blue-500">{{ metricas.inyectado }}</p>
+              <p class="text-lg text-gray-600 font-medium">Inyectado</p>
             </div>
           </div>
         </div>
 
         <!-- Armado -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <div>
-              <p class="text-4xl font-light text-blue-500">{{ totales.armado }}</p>
-              <p class="text-sm text-gray-500">Armado</p>
-              <div class="flex items-center mt-2">
-                <span class="text-xs text-green-500">+5%</span>
-                <svg class="w-3 h-3 ml-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="text-blue-400">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a1 1 0 01-1-1V9a1 1 0 011-1h1a2 2 0 100-4H4a1 1 0 01-1-1V4a1 1 0 011-1h3a1 1 0 001-1z"></path>
-              </svg>
+            <div class="flex items-center space-x-3">
+              <p class="text-3xl font-light text-blue-500">{{ metricas.armado }}</p>
+              <p class="text-lg text-gray-600 font-medium">Armado</p>
             </div>
           </div>
         </div>
 
-        <!-- Embalados -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+        <!-- Embalado -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
           <div class="flex items-center justify-between">
-            <div>
-              <p class="text-4xl font-light text-blue-500">{{ totales.embalado }}</p>
-              <p class="text-sm text-gray-500">Embalados</p>
-              <div class="flex items-center mt-2">
-                <span class="text-xs text-green-500">+15%</span>
-                <svg class="w-3 h-3 ml-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
-                </svg>
-              </div>
-            </div>
-            <div class="text-blue-400">
-              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h1.586a1 1 0 01.707.293l1.414 1.414a1 1 0 00.707.293H15a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"></path>
-              </svg>
+            <div class="flex items-center space-x-3">
+              <p class="text-3xl font-light text-blue-500">{{ metricas.embalado }}</p>
+              <p class="text-lg text-gray-600 font-medium">Embalado</p>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Gráficos de barras con Chart.js -->
+      <!-- Gráficos de barras dinámicos -->
       <div class="grid grid-cols-2 gap-6">
-        <!-- Prestamado Chart -->
+        <!-- Prearmado Chart -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-700">Prestamado</h3>
-            <div class="text-sm text-gray-500">
-              Total: {{ totales.prestamado }} | Desde: 14/03/2024 | Hasta: 20/05/2024
+            <h3 class="text-lg font-medium text-gray-700">Prearmado</h3>
+            <div class="flex items-center space-x-2">
+              <div class="text-sm text-gray-500">
+                <span v-if="!graficos.prearmado.loading">
+                  Total: {{ graficos.prearmado.total }} | 
+                  {{ graficos.prearmado.fechaInicio }} - {{ graficos.prearmado.fechaFin }}
+                </span>
+                <span v-else>Cargando...</span>
+              </div>
+              <button 
+                @click="formsGraficos.prearmado.mostrarForm = !formsGraficos.prearmado.mostrarForm"
+                class="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded border border-blue-300 hover:border-blue-500"
+              >
+                Filtrar
+              </button>
             </div>
           </div>
+          
+          <!-- Formulario de fechas -->
+          <div v-if="formsGraficos.prearmado.mostrarForm" class="mb-4 p-4 bg-gray-50 rounded">
+            <div class="flex items-end space-x-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.prearmado.fechaInicio"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.prearmado.fechaFin"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <button 
+                @click="aplicarFiltroFechas('prearmado')"
+                class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+              >
+                Aplicar
+              </button>
+              <button 
+                @click="formsGraficos.prearmado.mostrarForm = false"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+          
           <div class="relative h-64">
-            <canvas ref="prestamadoCanvas"></canvas>
+            <div v-if="graficos.prearmado.loading" class="absolute inset-0 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <canvas v-show="!graficos.prearmado.loading" ref="prearmadoCanvas"></canvas>
           </div>
         </div>
 
@@ -506,12 +894,62 @@ onUnmounted(() => {
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-700">Inyectado</h3>
-            <div class="text-sm text-gray-500">
-              Total: {{ totales.inyectado }} | Desde: 14/03/2024 | Hasta: 22/05/2024
+            <div class="flex items-center space-x-2">
+              <div class="text-sm text-gray-500">
+                <span v-if="!graficos.inyectado.loading">
+                  Total: {{ graficos.inyectado.total }} | 
+                  {{ graficos.inyectado.fechaInicio }} - {{ graficos.inyectado.fechaFin }}
+                </span>
+                <span v-else>Cargando...</span>
+              </div>
+              <button 
+                @click="formsGraficos.inyectado.mostrarForm = !formsGraficos.inyectado.mostrarForm"
+                class="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded border border-blue-300 hover:border-blue-500"
+              >
+                Filtrar
+              </button>
             </div>
           </div>
+          
+          <!-- Formulario de fechas -->
+          <div v-if="formsGraficos.inyectado.mostrarForm" class="mb-4 p-4 bg-gray-50 rounded">
+            <div class="flex items-end space-x-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.inyectado.fechaInicio"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.inyectado.fechaFin"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <button 
+                @click="aplicarFiltroFechas('inyectado')"
+                class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+              >
+                Aplicar
+              </button>
+              <button 
+                @click="formsGraficos.inyectado.mostrarForm = false"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+          
           <div class="relative h-64">
-            <canvas ref="inyectadoCanvas"></canvas>
+            <div v-if="graficos.inyectado.loading" class="absolute inset-0 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <canvas v-show="!graficos.inyectado.loading" ref="inyectadoCanvas"></canvas>
           </div>
         </div>
 
@@ -519,12 +957,62 @@ onUnmounted(() => {
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-700">Armado</h3>
-            <div class="text-sm text-gray-500">
-              Total: {{ totales.armado }} | Desde: 24/03/2024 | Hasta: 25/03/2024
+            <div class="flex items-center space-x-2">
+              <div class="text-sm text-gray-500">
+                <span v-if="!graficos.armado.loading">
+                  Total: {{ graficos.armado.total }} | 
+                  {{ graficos.armado.fechaInicio }} - {{ graficos.armado.fechaFin }}
+                </span>
+                <span v-else>Cargando...</span>
+              </div>
+              <button 
+                @click="formsGraficos.armado.mostrarForm = !formsGraficos.armado.mostrarForm"
+                class="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded border border-blue-300 hover:border-blue-500"
+              >
+                Filtrar
+              </button>
             </div>
           </div>
+          
+          <!-- Formulario de fechas -->
+          <div v-if="formsGraficos.armado.mostrarForm" class="mb-4 p-4 bg-gray-50 rounded">
+            <div class="flex items-end space-x-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.armado.fechaInicio"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.armado.fechaFin"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <button 
+                @click="aplicarFiltroFechas('armado')"
+                class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+              >
+                Aplicar
+              </button>
+              <button 
+                @click="formsGraficos.armado.mostrarForm = false"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+          
           <div class="relative h-64">
-            <canvas ref="armadoCanvas"></canvas>
+            <div v-if="graficos.armado.loading" class="absolute inset-0 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <canvas v-show="!graficos.armado.loading" ref="armadoCanvas"></canvas>
           </div>
         </div>
 
@@ -532,12 +1020,62 @@ onUnmounted(() => {
         <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-medium text-gray-700">Embalado</h3>
-            <div class="text-sm text-gray-500">
-              Total: {{ totales.embalado }} | Desde: 14/03/2024 | Hasta: 24/03/2024
+            <div class="flex items-center space-x-2">
+              <div class="text-sm text-gray-500">
+                <span v-if="!graficos.embalado.loading">
+                  Total: {{ graficos.embalado.total }} | 
+                  {{ graficos.embalado.fechaInicio }} - {{ graficos.embalado.fechaFin }}
+                </span>
+                <span v-else>Cargando...</span>
+              </div>
+              <button 
+                @click="formsGraficos.embalado.mostrarForm = !formsGraficos.embalado.mostrarForm"
+                class="text-blue-600 hover:text-blue-800 text-sm px-2 py-1 rounded border border-blue-300 hover:border-blue-500"
+              >
+                Filtrar
+              </button>
             </div>
           </div>
+          
+          <!-- Formulario de fechas -->
+          <div v-if="formsGraficos.embalado.mostrarForm" class="mb-4 p-4 bg-gray-50 rounded">
+            <div class="flex items-end space-x-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Inicio</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.embalado.fechaInicio"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha Fin</label>
+                <input 
+                  type="date" 
+                  v-model="formsGraficos.embalado.fechaFin"
+                  class="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+              </div>
+              <button 
+                @click="aplicarFiltroFechas('embalado')"
+                class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+              >
+                Aplicar
+              </button>
+              <button 
+                @click="formsGraficos.embalado.mostrarForm = false"
+                class="bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+          
           <div class="relative h-64">
-            <canvas ref="embaladoCanvas"></canvas>
+            <div v-if="graficos.embalado.loading" class="absolute inset-0 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <canvas v-show="!graficos.embalado.loading" ref="embaladoCanvas"></canvas>
           </div>
         </div>
       </div>
@@ -545,67 +1083,45 @@ onUnmounted(() => {
       <!-- Sección Alertas -->
       <div class="mt-6">
         <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 class="text-lg font-medium text-gray-700">Alertas</h3>
-            <div class="flex items-center space-x-4 text-sm">
-              <span class="flex items-center">
-                <div class="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-                Críticas: {{ alertsByType.error }}
-              </span>
-              <span class="flex items-center">
-                <div class="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
-                Advertencias: {{ alertsByType.warning }}
-              </span>
-              <span class="flex items-center">
-                <div class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
-                Info: {{ alertsByType.info }}
-              </span>
-            </div>
-          </div>
+
           
           <!-- Tabla de alertas -->
           <div class="overflow-x-auto max-h-96">
             <table class="w-full">
               <thead class="bg-blue-50 sticky top-0">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° DE ORDEN</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FECHA ALERTA</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USUARIO</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">N° DE SERIE</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MODELO</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">FECHA FINALIZACIÓN</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MOTIVO</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACCIONES</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DÍAS</th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 <tr 
-                  v-for="alert in alerts" 
+                  v-for="alert in alertas" 
                   :key="alert.id" 
                   :class="getAlertClass(alert.tipo)"
                   class="hover:bg-opacity-80 transition-colors"
                 >
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.fechaAlerta }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.numeroSerie }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.numeroOrden }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.fecha_alerta }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.usuario }}</td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.serie }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.modelo }}</td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ alert.fechaFinalizacion }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm" :class="getAlertTextClass(alert.tipo)">
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" 
                           :class="{
                             'bg-red-100 text-red-800': alert.tipo === 'error',
-                            'bg-orange-100 text-orange-800': alert.tipo === 'warning',
                             'bg-yellow-100 text-yellow-800': alert.tipo === 'info'
                           }">
                       {{ alert.motivo }}
                     </span>
                   </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div class="flex space-x-2">
-                      <button class="text-indigo-600 hover:text-indigo-900 text-xs bg-indigo-100 px-2 py-1 rounded">
-                        Ver
-                      </button>
-                      <button class="text-green-600 hover:text-green-900 text-xs bg-green-100 px-2 py-1 rounded">
-                        Resolver
-                      </button>
-                    </div>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span class="font-medium" :class="getAlertTextClass(alert.tipo)">
+                      {{ alert.dias_transcurridos }}
+                    </span>
                   </td>
                 </tr>
               </tbody>
@@ -616,53 +1132,102 @@ onUnmounted(() => {
 
       <!-- Sección inferior con Actividades recientes y Entregas -->
       <div class="grid grid-cols-2 gap-6 mt-6">
-        <!-- Actividades recientes -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div class="px-6 py-4 border-b border-gray-200">
-            <div class="flex justify-between items-center">
-              <h3 class="text-lg font-medium text-gray-700">Actividades recientes</h3>
-              <button class="text-blue-600 hover:text-blue-800 text-sm">Ver todas</button>
-            </div>
-          </div>
-          <div class="p-6">
-            <div class="space-y-4">
-              <div 
-                v-for="activity in activities.slice(0, 8)" 
-                :key="activity.id"
-                class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
-              >
+<div class="bg-white rounded-lg shadow-sm border border-gray-200">
+  <div class="px-6 py-4 border-b border-gray-200">
+    <div class="flex justify-between items-center">
+      <h3 class="text-lg font-medium text-gray-700">Actividades recientes</h3>
+      <button 
+        @click="cargarMasActividades" 
+        class="text-blue-600 hover:text-blue-800 text-sm"
+        :disabled="cargandoActividades"
+      >
+        <span v-if="cargandoActividades">Cargando...</span>
+        <span v-else>Ver más</span>
+      </button>
+    </div>
+  </div>
+  
+  <div class="p-6">
+    <!-- Mensaje si no hay actividades -->
+    <div v-if="!activities || activities.length === 0" class="text-center py-8">
+      <div class="text-gray-400 mb-2">
+        <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+      </div>
+      <p class="text-gray-500 text-sm">No hay actividades recientes</p>
+    </div>
 
-                <div class="flex-1 min-w-0">
-                  <div class="flex justify-between items-start">
-                    <div>
-                      <p class="text-sm text-blue-600 font-medium">{{ activity.descripcion }}</p>
-                      <div class="flex items-center mt-1">
-                        <span class="text-xs text-gray-500">{{ activity.fecha }}</span>
-                        <span class="mx-2 text-gray-300">•</span>
-                        <span class="text-xs text-gray-400 capitalize">{{ activity.tipo }}</span>
-                      </div>
-                    </div>
-                    <div class="flex-shrink-0">
-                      <button class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+    <!-- Lista de actividades -->
+    <div v-else class="space-y-4">
+      <div 
+        v-for="activity in activities.slice(0, 8)" 
+        :key="activity.id"
+        class="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
+      >
+        <!-- Icono de la actividad -->
+        <div class="flex-shrink-0 mt-0.5">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center" :class="getColorActividad(activity.color)">
+            <div v-html="getIconoActividad(activity.icono)"></div>
+          </div>
+        </div>
+        
+        <!-- Contenido de la actividad -->
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <p class="text-sm text-gray-900 font-medium">{{ activity.descripcion }}</p>
+              
+              <!-- Información adicional -->
+              <div class="flex items-center mt-1 space-x-2 text-xs text-gray-500">
+                <span>{{ activity.usuario }}</span>
+                <span>•</span>
+                <span>{{ activity.tiempo_transcurrido }}</span>
+                <span v-if="activity.modulo">•</span>
+                <span v-if="activity.modulo" class="px-2 py-0.5 bg-gray-100 rounded-full">{{ activity.modulo }}</span>
+              </div>
+              
+              <!-- Datos adicionales si existen -->
+              <div v-if="activity.datos_adicionales && Object.keys(activity.datos_adicionales).length > 0" 
+                   class="mt-2 text-xs text-gray-400">
+                <div v-for="(value, key) in activity.datos_adicionales" :key="key" class="inline-block mr-3">
+                  <strong>{{ key }}:</strong> {{ value }}
                 </div>
               </div>
             </div>
             
-            <!-- Indicador de más actividades -->
-            <div class="mt-4 pt-4 border-t border-gray-200">
-              <button class="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2">
-                Ver más actividades...
+            <!-- Menú de opciones -->
+            <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button class="text-gray-400 hover:text-gray-600 p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+                </svg>
               </button>
             </div>
           </div>
         </div>
-
+      </div>
+    </div>
+    
+    <!-- Indicador de más actividades -->
+    <div v-if="activities && activities.length > 8" class="mt-4 pt-4 border-t border-gray-200">
+      <button 
+        @click="cargarMasActividades"
+        :disabled="cargandoActividades"
+        class="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2 disabled:opacity-50"
+      >
+        <span v-if="cargandoActividades">
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500 inline" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Cargando más actividades...
+        </span>
+        <span v-else>Ver más actividades...</span>
+      </button>
+    </div>
+  </div>
+</div>
         <!-- Entregas -->
         <div class="bg-white rounded-lg shadow-sm border border-gray-200">
           <div class="px-6 py-4 border-b border-gray-200">
@@ -672,15 +1237,17 @@ onUnmounted(() => {
                 <button 
                   @click="previousMonth"
                   class="p-1 hover:bg-gray-100 rounded transition-colors"
+                  :disabled="isLoadingCalendar"
                 >
                   <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                   </svg>
                 </button>
-                <span class="text-sm text-gray-600 font-medium min-w-20 text-center">{{ currentMonthName }}</span>
+                <span class="text-sm text-gray-600 font-medium min-w-24 text-center">{{ currentMonthName }} {{ selectedYear }}</span>
                 <button 
                   @click="nextMonth"
                   class="p-1 hover:bg-gray-100 rounded transition-colors"
+                  :disabled="isLoadingCalendar"
                 >
                   <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -689,163 +1256,129 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+          
           <div class="p-6">
-            <!-- Calendario -->
-            <div class="grid grid-cols-7 gap-1 text-center text-xs mb-4">
-              <!-- Días de la semana -->
-              <div class="p-2 text-gray-500 font-semibold">L</div>
-              <div class="p-2 text-gray-500 font-semibold">M</div>
-              <div class="p-2 text-gray-500 font-semibold">X</div>
-              <div class="p-2 text-gray-500 font-semibold">J</div>
-              <div class="p-2 text-gray-500 font-semibold">V</div>
-              <div class="p-2 text-gray-500 font-semibold">S</div>
-              <div class="p-2 text-gray-500 font-semibold">D</div>
+            <!-- Loading indicator -->
+            <div v-if="isLoadingCalendar" class="flex items-center justify-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+
+            <!-- Calendar content -->
+            <div v-else>
+              <!-- Leyenda -->
+              <div class="flex items-center space-x-4 mb-4 text-xs">
+                <div class="flex items-center space-x-1">
+                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span class="text-gray-600">Completado</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span class="text-gray-600">Pendiente</span>
+                </div>
+                <div class="flex items-center space-x-1">
+                  <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <span class="text-gray-600">Vencido</span>
+                </div>
+              </div>
               
-              <!-- Días del calendario -->
-              <div 
-                v-for="(day, index) in generateCalendar" 
-                :key="index"
-                class="relative p-2 h-8 flex items-center justify-center"
-                :class="{
-                  'text-gray-400': !day.isCurrentMonth,
-                  'text-gray-900': day.isCurrentMonth && !day.isToday,
-                  'bg-blue-500 text-white rounded-full font-semibold': day.isToday,
-                  'hover:bg-gray-100 cursor-pointer': day.isCurrentMonth && !day.isToday
-                }"
-              >
-                {{ day.day }}
-                <!-- Indicador de entrega -->
+              <!-- Calendario -->
+              <div class="grid grid-cols-7 gap-1 text-center text-xs mb-4">
+                <!-- Días de la semana -->
+                <div class="p-2 text-gray-500 font-semibold">L</div>
+                <div class="p-2 text-gray-500 font-semibold">M</div>
+                <div class="p-2 text-gray-500 font-semibold">X</div>
+                <div class="p-2 text-gray-500 font-semibold">J</div>
+                <div class="p-2 text-gray-500 font-semibold">V</div>
+                <div class="p-2 text-gray-500 font-semibold">S</div>
+                <div class="p-2 text-gray-500 font-semibold">D</div>
+                
+                <!-- Días del calendario -->
                 <div 
-                  v-if="day.hasDelivery && !day.isToday" 
-                  class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full"
-                ></div>
+                  v-for="(day, index) in generateCalendar" 
+                  :key="`${selectedMonth}-${selectedYear}-${index}`"
+                  class="relative p-2 h-8 flex items-center justify-center cursor-pointer transition-colors"
+                  :class="{
+                    'text-gray-400': !day.isCurrentMonth,
+                    'text-gray-900': day.isCurrentMonth && !day.isToday,
+                    'bg-blue-500 text-white rounded-full font-semibold': day.isToday,
+                    'hover:bg-gray-100': day.isCurrentMonth && !day.isToday && !day.hasDelivery,
+                    'hover:bg-gray-50': day.isCurrentMonth && day.hasDelivery
+                  }"
+                  @mouseenter="showTooltip($event, day)"
+                  @mouseleave="hideTooltip"
+                >
+                  {{ day.day }}
+                  <!-- Indicador de entrega con colores según estado -->
+                  <div 
+                    v-if="day.hasDelivery && !day.isToday" 
+                    class="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                    :class="getIndicadorClass(day.tipoIndicador)"
+                  ></div>
+                  <!-- Indicador alternativo para día actual con entregas -->
+                  <div 
+                    v-if="day.hasDelivery && day.isToday" 
+                    class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full"
+                    :class="getIndicadorClass(day.tipoIndicador)"
+                  ></div>
+                </div>
               </div>
-            </div>
+              
             
-            <!-- Próximas entregas -->
-            <div class="border-t border-gray-200 pt-4">
-              <h4 class="text-sm font-medium text-gray-700 mb-3">Próximas entregas</h4>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between p-2 bg-blue-50 rounded">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span class="text-sm text-gray-700">Orden #00789</span>
-                  </div>
-                  <span class="text-xs text-gray-500">Hoy</span>
-                </div>
-                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
-                    <span class="text-sm text-gray-700">Orden #00856</span>
-                  </div>
-                  <span class="text-xs text-gray-500">Mañana</span>
-                </div>
-                <div class="flex items-center justify-between p-2 hover:bg-gray-50 rounded">
-                  <div class="flex items-center space-x-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span class="text-sm text-gray-700">Orden #00923</span>
-                  </div>
-                  <span class="text-xs text-gray-500">En 3 días</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Estadísticas de entregas -->
-            <div class="border-t border-gray-200 pt-4 mt-4">
-              <div class="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div class="text-lg font-semibold text-blue-600">12</div>
-                  <div class="text-xs text-gray-500">Este mes</div>
-                </div>
-                <div>
-                  <div class="text-lg font-semibold text-green-600">8</div>
-                  <div class="text-xs text-gray-500">Completadas</div>
-                </div>
-                <div>
-                  <div class="text-lg font-semibold text-orange-600">4</div>
-                  <div class="text-xs text-gray-500">Pendientes</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Footer con información adicional -->
-      <div class="mt-6 grid grid-cols-3 gap-6">
-        <!-- Resumen de producción -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h4 class="text-sm font-medium text-gray-700 mb-3">Resumen de Producción</h4>
+        <!-- Tooltip -->
+        <div 
+          v-if="tooltip.show && tooltip.content" 
+          class="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm pointer-events-none"
+          :style="{
+            left: tooltip.x + 'px',
+            top: (tooltip.y - 10) + 'px',
+            transform: 'translateX(-50%) translateY(-100%)'
+          }"
+        >
+          <div class="text-sm font-medium text-gray-900 mb-2">
+            Entregas del día {{ tooltip.content.dia }}
+          </div>
+          
           <div class="space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-gray-600">Eficiencia promedio</span>
-              <span class="text-sm font-medium text-green-600">87.5%</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-gray-600">Tiempo promedio/orden</span>
-              <span class="text-sm font-medium text-blue-600">2.3h</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-sm text-gray-600">Órdenes completadas hoy</span>
-              <span class="text-sm font-medium text-gray-900">15</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Estado del sistema -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h4 class="text-sm font-medium text-gray-700 mb-3">Estado del Sistema</h4>
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-600">Servidor</span>
-              <div class="flex items-center">
-                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span class="text-sm text-green-600">Operativo</span>
+            <div 
+              v-for="entrega in tooltip.content.entregas" 
+              :key="entrega.id"
+              class="border rounded p-2"
+              :class="getEstadoClass(entrega.estado_visual)"
+            >
+              <div class="flex justify-between items-start mb-1">
+                <span class="text-sm font-medium">Orden #{{ entrega.no_orden }}</span>
+                <span class="text-xs px-2 py-1 rounded-full border" :class="getEstadoClass(entrega.estado_visual)">
+                  {{ getEstadoTexto(entrega.estado_visual) }}
+                </span>
+              </div>
+              
+              <div class="text-xs text-gray-600 space-y-1">
+                <div><strong>Fecha:</strong> {{ entrega.fecha_finalizacion }}</div>
+                
+                <div v-if="entrega.modelos && entrega.modelos.length > 0">
+                  <strong>Modelos:</strong>
+                  <div class="ml-2">
+                    <div v-for="modelo in entrega.modelos" :key="modelo.modelo" class="flex justify-between">
+                      <span>{{ modelo.nombre }}</span>
+                      <span class="text-gray-500">x{{ modelo.cantidad }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div v-if="entrega.operarios && entrega.operarios.length > 0">
+                  <strong>Operarios:</strong>
+                  <div class="ml-2">
+                    <div v-for="operario in entrega.operarios" :key="operario.legajo">
+                      {{ operario.nombre }} ({{ operario.legajo }})
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-600">Base de datos</span>
-              <div class="flex items-center">
-                <div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                <span class="text-sm text-green-600">Operativo</span>
-              </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-sm text-gray-600">Última sincronización</span>
-              <span class="text-sm text-gray-500">{{ formatTime(currentTime) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Accesos rápidos -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h4 class="text-sm font-medium text-gray-700 mb-3">Accesos Rápidos</h4>
-          <div class="grid grid-cols-2 gap-2">
-            <button class="flex items-center justify-center p-2 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-              </svg>
-              Nueva Orden
-            </button>
-            <button class="flex items-center justify-center p-2 text-sm bg-green-50 text-green-700 rounded hover:bg-green-100 transition-colors">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-              </svg>
-              Reportes
-            </button>
-            <button class="flex items-center justify-center p-2 text-sm bg-orange-50 text-orange-700 rounded hover:bg-orange-100 transition-colors">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-              </svg>
-              Configuración
-            </button>
-            <button class="flex items-center justify-center p-2 text-sm bg-purple-50 text-purple-700 rounded hover:bg-purple-100 transition-colors">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-              Ayuda
-            </button>
           </div>
         </div>
       </div>
