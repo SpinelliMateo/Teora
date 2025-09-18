@@ -16,6 +16,7 @@ use App\Http\Controllers\ReporteController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\BarcodeController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ModeloController;
 use App\Http\Controllers\OperarioController;
 use App\Http\Controllers\QzController;
@@ -39,13 +40,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ->name('sectores.operarios.barcode.etiqueta.largo');
     Route::post('/qz/sign', [QzController::class, 'sign'])->name('qz.sign');
 
-
     // DASHBOARD
     Route::middleware(['permission:inicio'])->group(function () {
-        Route::get('dashboard', function () {
-            return Inertia::render('Dashboard');
-        })->name('dashboard');
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/graficos', [DashboardController::class, 'obtenerDatosGraficos'])->name('dashboard.graficos');
+        Route::get('/dashboard/entregas-mes', [DashboardController::class, 'obtenerEntregasPorMes'])->name('dashboard.entregas-mes');
+        Route::get('/dashboard/actividades-recientes', [DashboardController::class, 'obtenerActividadesRecientes'])->name('dashboard.actividades-recientes');
+        Route::post('/dashboard/actividades', [DashboardController::class, 'crearActividad'])->name('dashboard.crear-actividad');
+        Route::delete('/dashboard/actividades/{id}', [DashboardController::class, 'eliminarActividad'])->name('dashboard.eliminar-actividad');
     });
+
 
     // STOCK
     Route::middleware(['permission:stock'])->group(function () {

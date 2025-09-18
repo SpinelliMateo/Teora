@@ -6,9 +6,11 @@ use App\Models\Modelo;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
+use App\Traits\RegistraActividades;
 
 class ModeloController extends Controller
 {
+    use RegistraActividades;
     /**
      * Display a listing of the resource.
      */
@@ -77,7 +79,13 @@ class ModeloController extends Controller
         }
 
         try {
-            Modelo::create($request->all());
+            $modelo = Modelo::create($request->all());
+
+            $this->registrarCreacion(
+                "Se creó el modelo {$modelo->nombre_modelo}",
+                'modelos', // módulo
+                $modelo->id  // ID de referencia
+            );
 
             return redirect()->route('modelos')
                 ->with('success', 'Modelo creado correctamente.');
@@ -143,6 +151,12 @@ class ModeloController extends Controller
         try {
             $modelo->update($request->all());
 
+                $this->registrarModificacion(
+                    "Se modificó el modelo {$modelo->nombre_modelo}",
+                    'modelos',
+                    $modelo->id
+                );
+
             return redirect()->route('modelos')
                 ->with('success', 'Modelo actualizado correctamente.');
         } catch (\Exception $e) {
@@ -198,6 +212,12 @@ class ModeloController extends Controller
                     ->withErrors(['error' => 'No se puede eliminar el modelo porque está siendo usado en: ' . $mensaje . '.']);
             }
 
+            $this->registrarEliminacion(
+                "Se eliminó el modelo {$modelo->nombre_modelo}",
+                'modelos',
+                $modelo->id
+            );
+            
             $modelo->delete();
 
             return redirect()->route('modelos')

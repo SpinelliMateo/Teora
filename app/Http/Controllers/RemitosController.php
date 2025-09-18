@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Modelo;
 use App\Models\Remito;
+use App\Traits\RegistraActividades;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class RemitosController extends Controller
 {
+    use RegistraActividades;
+
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -157,6 +160,12 @@ class RemitosController extends Controller
                       $cantidadModelos . ' modelo(s) diferentes | ' . 
                       $totalModelos . ' unidades totales.';
 
+        $this->registrarCreacion(
+            "Se creó el remito #{$remito->n_remito}",
+            'remitos', // módulo
+            $remito->id  // ID de referencia
+        );
+
             return back()->with([
                 'success' => true,
                 'message' => $mensaje,
@@ -239,6 +248,11 @@ class RemitosController extends Controller
                       $cantidadModelos . ' modelo(s) diferentes | ' . 
                       $totalModelos . ' unidades totales.';
 
+            $this->registrarModificacion(
+                "Se modificó el remito #{$remito->n_remito}",
+                'remito',
+                $remito->id
+            );
             return back()->with([
                 'success' => true,
                 'message' => $mensaje
@@ -277,6 +291,12 @@ class RemitosController extends Controller
 
             $mensaje = '🗑️ Remito N°' . $numeroRemito . ' eliminado exitosamente. ' . 
                       'Cliente: ' . $cliente . ' ha sido removido del sistema permanentemente.';
+            
+            $this->registrarEliminacion(
+                "Se eliminó el remito #{$numeroRemito}",
+                'remitos',
+                 $remito->id
+            );
 
             return back()->with([
                 'success' => true,
