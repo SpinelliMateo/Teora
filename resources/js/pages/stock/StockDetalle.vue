@@ -58,7 +58,7 @@ const handle_filtro = (filtro) => {
                     <path d="M10 20L0 10L10 0L11.7812 1.75L4.78125 8.75H20V11.25H4.78125L11.7812 18.25L10 20Z" fill="#626262"/>
                     </svg>
                 </button>
-                <h1 class="text-[32px] font-bold text-gray-800">Detalle modelo {{ modelo.modelo }}</h1>
+                <h1 class="text-[32px] font-bold text-gray-800">Detalle modelo {{ modelo.modelo }} - {{ modelo.nombre_modelo }}</h1>
             </div>
 
             <div class="flex items-center w-full lg:w-auto gap-5 ml-1">

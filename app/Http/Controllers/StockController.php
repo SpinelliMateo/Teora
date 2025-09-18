@@ -28,6 +28,7 @@ class StockController extends Controller
         $stockQuery = ControlStock::query()
             ->where('fecha_prearmado', '>=', $fechaParsed)
             ->whereNull('fecha_salida')
+            ->where('oculto', false)
             ->selectRaw('
                 modelo_id,
                 COUNT(CASE 

@@ -86,7 +86,9 @@ class OrdenFabricacionController extends Controller
         $ordenFabricacion = OrdenFabricacion::with(['operarios', 'modelos'])
         ->withSum('modelos as total_modelos', 'modelo_orden_fabricacion.cantidad')
         ->find($id);
-        $operarios = Operario::activos()->orderBy('nombre')->get();
+        $operarios = Operario::whereHas('sectores', function ($query) {
+            $query->where('nombre', 'prearmado');
+            })->orderBy('nombre', 'asc')->get();
         
         return Inertia::render('ordenesFabricacion/Edit', [
             'modelos' => $modelos,
@@ -101,8 +103,8 @@ class OrdenFabricacionController extends Controller
         $ordenFabricacion = OrdenFabricacion::findOrFail($id);
 
         $request->validate([
-            'fecha' => ['required', 'date', 'after_or_equal:today'],
-            'fecha_finalizacion' => ['required', 'date', 'after:fecha'],
+            'fecha' => ['required', 'date'],
+            'fecha_finalizacion' => ['required', 'date'],
             'no_orden' => [
                 'required', 
                 'string', 
@@ -111,8 +113,6 @@ class OrdenFabricacionController extends Controller
             'operarios' => ['required', 'array', 'min:1'],
             'operarios.*' => ['exists:operarios,id'],
         ], [
-            'fecha.after_or_equal' => 'La fecha debe ser de hoy en adelante.',
-            'fecha_finalizacion.after' => 'La fecha de finalización debe ser posterior a la fecha de inicio.',
             'operarios.required' => 'Debe seleccionar al menos un operario.',
             'operarios.min' => 'Debe seleccionar al menos un operario.',
         ]);
