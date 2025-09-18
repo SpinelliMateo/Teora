@@ -8,10 +8,13 @@ use App\Models\Maquina;
 use App\Models\Modelo;
 use App\Models\Operario;
 use App\Models\OrdenFabricacion;
+use App\Traits\RegistraActividades;
 use Illuminate\Validation\Rule;
 
 class OrdenFabricacionController extends Controller
 {
+    use RegistraActividades;
+
     public function index()
     {
         $modelos = Modelo::orderBy('modelo', 'ASC')->get(); 
@@ -51,6 +54,12 @@ class OrdenFabricacionController extends Controller
         // Cargar la relación completa con los datos de pivot
         $nuevaOrden = OrdenFabricacion::withSum('modelos as total_modelos', 'modelo_orden_fabricacion.cantidad')->find($orden->id);
     
+            $this->registrarCreacion(
+            "Se creó la orden #{$orden->no_orden}",
+            'ordenes',
+            $orden->id
+        );
+
         return response()->json(['orden' => $nuevaOrden]);
     }
 
@@ -116,6 +125,13 @@ class OrdenFabricacionController extends Controller
 
         $ordenFabricacion->operarios()->sync($request->operarios);
 
+        $this->registrarModificacion(
+            "Se modificó la orden #{$ordenFabricacion->no_orden}",
+            'ordenes',
+            $ordenFabricacion->id
+        );
+
+
         return redirect()->back()->with('success', 'Orden de fabricación actualizada exitosamente');
     }
 
@@ -176,6 +192,7 @@ class OrdenFabricacionController extends Controller
                 'cantidad' => $request->cantidad,
                 'updated_at' => now()
             ]);
+            
     
             return back()->with('success', 'Cantidad actualizada correctamente');
             

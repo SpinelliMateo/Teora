@@ -9,10 +9,13 @@ use App\Models\User;
 use App\Models\ActividadServicioTecnico;
 use Carbon\Carbon;
 use App\Models\Problema;
+use App\Traits\RegistraActividades;
 use Illuminate\Support\Facades\Log;
 
 class ServicioTecnicoController extends Controller
 {
+    use RegistraActividades;
+
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -132,7 +135,12 @@ class ServicioTecnicoController extends Controller
         ]);
         
         try{
-            ServicioTecnico::create($servicio);
+            $servicio = ServicioTecnico::create($servicio);
+            $this->registrarCreacion(
+                "Se creó el servicio técnico #{$servicio->id}",
+                'servicio técnico', // módulo
+                $servicio->id  // ID de referencia
+            );
         }catch (\Exception $e){
             Log::error($e->getMessage());
             return back()->withErrors([
@@ -177,6 +185,13 @@ class ServicioTecnicoController extends Controller
             ]);
         }
 
+        $this->registrarModificacion(
+            "Se modificó el servicio técnico #{$servicio_tecnico->id}",
+            'servicio técnico',
+            $servicio_tecnico->id
+        );
+
+
         $servicio_tecnico->update($servicio);
     }
 
@@ -192,6 +207,12 @@ class ServicioTecnicoController extends Controller
         $servicio->update([
             'pagado' => $request->pagado, 
         ]);
+
+        $this->registrarModificacion(
+            "Se modificó el servicio técnico #{$servicio->id}",
+            'servicio técnico',
+            $servicio->id
+        );
     }
 
     public function update_servicio_estado(Request $request)
@@ -206,6 +227,12 @@ class ServicioTecnicoController extends Controller
         $servicio->update([
             'estado' => $request->estado, 
         ]);
+
+        $this->registrarModificacion(
+            "Se modificó el servicio técnico #{$servicio->id}",
+            'servicio técnico',
+            $servicio->id
+        );
     }
 
     public function servicio_tecnico_detalle(Request $request){
@@ -244,6 +271,7 @@ class ServicioTecnicoController extends Controller
             'titulo' => $request->titulo,
             'descripcion' => $request->descripcion,
         ]);
+
     }
 
     public function update_actividad_servicio_tecnico(Request $request){
@@ -264,5 +292,6 @@ class ServicioTecnicoController extends Controller
             'titulo' => $request->titulo,
             'descripcion' => $request->descripcion,
         ]);
+
     }
 }

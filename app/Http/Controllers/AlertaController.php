@@ -6,11 +6,14 @@ use App\Models\Alerta;
 use App\Models\ControlStock;
 use App\Models\Modelo;
 use App\Models\User;
+use App\Traits\RegistraActividades;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class AlertaController extends Controller
 {
+    use RegistraActividades;
+
     public function index(Request $request)
     {
         $search = $request->input('search');
@@ -114,7 +117,13 @@ class AlertaController extends Controller
                 'motivo.max' => 'El motivo no puede exceder 500 caracteres.'
             ]);
 
-            Alerta::create($validated);
+            $alerta = Alerta::create($validated);
+
+            $this->registrarCreacion(
+                "Se creó la alerta #{$alerta->id} ({$alerta->motivo})",
+                'alertas',
+                $alerta->id
+            );
 
             return redirect()->route('alertas')->with('success', 'Alerta creada exitosamente.');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -151,6 +160,12 @@ class AlertaController extends Controller
 
             $alerta = Alerta::findOrFail($id);
             $alerta->update($validated);
+            
+            $this->registrarModificacion(
+                "Se modificó la alerta #{$alerta->id} ({$alerta->motivo})",
+                'ordenes',
+                $alerta->id
+            );
 
             return redirect()->route('alertas')->with('success', 'Alerta actualizada exitosamente.');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -168,6 +183,12 @@ class AlertaController extends Controller
         try {
             $alerta = Alerta::findOrFail($id);
             $alerta->delete();
+
+            $this->registrarEliminacion(
+                "Se eliminó la alerta #{$alerta->id} ({$alerta->motivo})",
+                'ordenes',
+                $alerta->id
+            );
 
             return redirect()->route('alertas')->with('success', '🗑️ Alerta eliminada exitosamente.');
         } catch (\Exception $e) {
@@ -189,9 +210,20 @@ class AlertaController extends Controller
             'solucionado' => $request->solucionado,
         ]);
 
+
         if ($alerta->solucionado) {
+                $this->registrarFinalizacion(
+                    "Se finalizó la alerta #{$alerta->id} ({$alerta->motivo})",
+                    'ordenes',
+                    $alerta->id
+                );
             return redirect()->route('alertas')->with('success', 'Alerta marcada como solucionada.');
         } else {
+            $this->registrarModificacion(
+                "Alerta pendiente: #{$alerta->id} ({$alerta->motivo})",
+                'ordenes',
+                $alerta->id
+            );
             return redirect()->route('alertas')->with('success', 'Alerta marcada como no solucionada.');
         }
 
