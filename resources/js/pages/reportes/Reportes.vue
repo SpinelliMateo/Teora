@@ -49,7 +49,6 @@ const props = defineProps<{
     datosGraficoServicios: DatoGrafico[];
 }>()
 
-// Variables reactivas para los filtros
 const selectedModelo = ref('')
 const selectedOperario = ref('')
 const selectedTecnico = ref('')
@@ -57,21 +56,17 @@ const selectedProblema = ref('')
 const selectedSubproblema = ref('')
 const fechaDesde = ref('')
 const fechaHasta = ref('')
-
-// Computed para determinar automáticamente el tipo de gráfico
+ 
 const tipoGrafico = computed(() => {
-    // Si hay filtros de técnico, problema o subproblema, mostrar servicios
     if (selectedTecnico.value || selectedProblema.value || selectedSubproblema.value) {
         return 'servicios'
     }
-    // Por defecto, mostrar procesos
     return 'procesos'
 })
 
 // Computed property para obtener subproblemas del problema seleccionado
 const subproblemasDisponibles = computed(() => {
     if (!selectedProblema.value) {
-        // Si no hay problema seleccionado, mostrar todos los subproblemas
         return props.problemas.flatMap(problema => problema.subproblemas)
     }
 
@@ -79,7 +74,6 @@ const subproblemasDisponibles = computed(() => {
     return problemaSeleccionado ? problemaSeleccionado.subproblemas : []
 })
 
-// Computed properties para bloqueo mutuo de filtros
 const operarioDisabled = computed(() => {
     return !!(selectedTecnico.value || selectedProblema.value || selectedSubproblema.value)
 })
