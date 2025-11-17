@@ -2,3 +2,4 @@
 !.gitignore
 !qz/
 !qz/private-key.pem
+!qz/digital-certificate.txt
