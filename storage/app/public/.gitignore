@@ -1,2 +1,4 @@
 *
 !.gitignore
+!qz/
+!qz/digital-certificate.txt
